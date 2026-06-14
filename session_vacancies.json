@@ -1,0 +1,15 @@
+{
+  "_comment": "Заполнять в ходе сессии. В конце: python batch_add_from_json.py session_vacancies.json. После запуска очистить vacancies до [].",
+  "date": "",
+  "vacancies": [
+    {
+      "_example": true,
+      "vacancy": "C++ разработчик",
+      "company": "Компания",
+      "url": "https://hh.kz/vacancy/...",
+      "source": "hh.kz",
+      "template": "B",
+      "comment": ""
+    }
+  ]
+}

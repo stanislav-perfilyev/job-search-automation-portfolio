@@ -1,0 +1,4 @@
+requests>=2.31.0
+google-auth>=2.27.0
+matplotlib>=3.8.0
+cryptography>=42.0.0
