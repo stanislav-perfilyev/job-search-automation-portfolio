@@ -119,4 +119,4 @@ python report.py --mode check   # after a notification check
 
 ## Security
 
-All secrets are passed via environment variables. `sheets_key.json` and `.env` are in `.gitignore` and must never be committed. GitHub Actions uses repository secrets — the raw values a
+All secrets are passed via environment variables. `sheets_key.json` and `.env` are in `.gitignore` and must never be committed. GitHub Actions uses repository secrets — the raw values are never visible in logs.
