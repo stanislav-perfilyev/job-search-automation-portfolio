@@ -47,8 +47,8 @@ Local / manual
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/job-search-automation.git
-cd job-search-automation
+git clone https://github.com/stanislav-perfilyev/job-search-automation-portfolio.git
+cd job-search-automation-portfolio
 pip install -r requirements.txt
 ```
 
@@ -119,4 +119,4 @@ python report.py --mode check   # after a notification check
 
 ## Security
 
-All secrets are passed via environment variables. `sheets_key.json` and `.env` are in `.gitignore` and must never be committed. GitHub Actions uses repository secrets — the raw values are never visible in logs.
+All secrets are passed via environment variables. `sheets_key.json` and `.env` are in `.gitignore` and must never be committed. GitHub Actions uses repository secrets — the raw values a
