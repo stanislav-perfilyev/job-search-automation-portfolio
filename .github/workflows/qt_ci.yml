@@ -1,0 +1,52 @@
+name: Qt Dashboard CI
+
+on:
+  push:
+    paths:
+      - 'portfolio/qt-job-dashboard/**'
+  pull_request:
+    paths:
+      - 'portfolio/qt-job-dashboard/**'
+
+jobs:
+  build:
+    name: Build & Test (Ubuntu / Qt 6)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.6.*'
+          modules: 'qtcharts'
+
+      - name: Install PostgreSQL dev headers
+        run: sudo apt-get install -y libpq-dev
+
+      - name: Configure CMake
+        working-directory: portfolio/qt-job-dashboard
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=ON
+
+      - name: Build
+        working-directory: portfolio/qt-job-dashboard
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run tests (headless)
+        working-directory: portfolio/qt-job-dashboard
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: JobSearchDashboard-linux
+          path: portfolio/qt-job-dashboard/build/JobSearchDashboard
+          retention-days: 7

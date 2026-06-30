@@ -1,17 +1,28 @@
-# Secrets — never commit these
 .env
 sheets_key.json
 *.json.bak
-
-# Python
+negotiations_state.json
+telegram_state.json
+cover_letters.json
+freelance_session.json
+access.log
+db.log/
 __pycache__/
 *.py[cod]
+*.pyo
 *.egg-info/
 .venv/
 venv/
 dist/
 build/
-
-# OS
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+*.iml
 .DS_Store
 Thumbs.db
+portfolio/*/build/
+portfolio/*/build-*/
+portfolio/*/.cmake/

@@ -1,4 +1,40 @@
-requests>=2.31.0
-google-auth>=2.27.0
-matplotlib>=3.8.0
-cryptography>=42.0.0
+# FastAPI + сервер
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# SQLAlchemy async + asyncpg
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0
+
+# Pydantic v2
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# .env (app/ использует; скрипты - встроенный _load_dotenv)
+python-dotenv>=1.0.0
+
+# Claude API (cover_letter.py)
+anthropic>=0.30.0
+
+# Redis (опционально, для app/cache.py)
+redis>=5.0.0
+
+# HTTP клиент (Telegram notify, healthcheck, cover_letter.py)
+httpx>=0.27.0
+
+# morning_brief.py - async HTTP
+aiohttp>=3.9.0
+
+# Планировщик задач (3.x совместим с asyncio; 4.x несовместим)
+apscheduler>=3.10.4,<4.0
+
+# WebSocket (встроен в fastapi/starlette)
+websockets>=12.0
+
+# Google Sheets API (morning_brief.py, kpi_report.py, batch_add_from_json.py)
+google-api-python-client>=2.100.0
+google-auth>=2.22.0
+google-auth-httplib2>=0.2.0
+
+# psycopg2 для db.py (синхронный fallback)
+psycopg2-binary>=2.9.9

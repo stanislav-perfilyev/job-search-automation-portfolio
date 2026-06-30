@@ -1,0 +1,76 @@
+# Git
+.git
+.gitignore
+.gitmodules
+.gitattributes
+.github/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Тесты
+test_*.py
+*.test.py
+pytest.ini
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+access.log
+db.log
+
+# Локальные данные (в БД, не в контейнере)
+*.json
+!package.json
+freelance_session.json
+session_vacancies.json
+telegram_state.json
+negotiations_state.json
+freelance_proposals.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Секреты
+.env
+.env.local
+*.pem
+*.key
+
+# Документы и фото
+*.docx
+*.pdf
+*.jpg
+*.png
+*.ahk
+*.bat
+*.vbs
+*.ps1
+
+# Docker (не нужен внутри образа)
+docker-compose*.yml
+Dockerfile*
+nginx/
+
+# Прочее
+job-search-automation-public/
+portfolio/
+terminal-setup/

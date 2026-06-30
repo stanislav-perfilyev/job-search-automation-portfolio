@@ -1,0 +1,26 @@
+# FastAPI + сервер
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# SQLAlchemy async + asyncpg
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0
+
+# Pydantic v2
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# .env
+python-dotenv>=1.0.0
+
+# Redis кэш (опционально)
+redis>=5.0.0
+
+# HTTP клиент (Telegram notify, healthcheck)
+httpx>=0.27.0
+
+# Планировщик задач
+apscheduler>=3.10.4
+
+# WebSocket (встроен в fastapi/starlette)
+websockets>=12.0

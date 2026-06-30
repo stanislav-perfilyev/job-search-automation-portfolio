@@ -1,0 +1,82 @@
+/* ── Global ── */
+QWidget {
+    background-color: #1A1A2E;
+    color: #E0E0E0;
+    font-family: "Segoe UI", "Inter", sans-serif;
+    font-size: 13px;
+}
+QMainWindow { background-color: #0F0F1E; }
+
+/* ── Menu ── */
+QMenuBar { background-color: #16213E; border-bottom: 1px solid #2A2A5A; }
+QMenuBar::item:selected { background-color: #0F3460; }
+QMenu { background-color: #16213E; border: 1px solid #2A2A5A; }
+QMenu::item:selected { background-color: #0F3460; }
+
+/* ── Tabs ── */
+QTabWidget::pane { border: 1px solid #2A2A5A; }
+QTabBar::tab {
+    background-color: #16213E; color: #A0A0C0;
+    padding: 6px 16px; border: 1px solid #2A2A5A;
+    border-bottom: none;
+}
+QTabBar::tab:selected { background-color: #1A1A2E; color: #E0E0E0; }
+
+/* ── Table ── */
+QTableView {
+    gridline-color: #2A2A5A;
+    alternate-background-color: #1E1E3A;
+    selection-background-color: #0F3460;
+    border: none;
+}
+QHeaderView::section {
+    background-color: #16213E; color: #A0A0FF;
+    padding: 4px 8px; border: none;
+    border-right: 1px solid #2A2A5A;
+    border-bottom: 2px solid #0F3460;
+    font-weight: bold;
+}
+
+/* ── KPI Cards ── */
+#KpiCard {
+    background-color: #16213E;
+    border: 1px solid #2A2A5A;
+    border-radius: 8px;
+    min-width: 140px;
+}
+#KpiLabel    { color: #8888AA; font-size: 11px; }
+#KpiSubtitle { color: #8888AA; font-size: 11px; }
+
+/* ── Inputs ── */
+QLineEdit, QComboBox, QSpinBox {
+    background-color: #16213E; color: #E0E0E0;
+    border: 1px solid #2A2A5A; border-radius: 4px;
+    padding: 4px 8px;
+}
+QLineEdit:focus, QComboBox:focus { border-color: #4A9EFF; }
+QComboBox::drop-down { border: none; }
+
+/* ── Buttons ── */
+QPushButton {
+    background-color: #0F3460; color: #E0E0E0;
+    border: 1px solid #1A5276; border-radius: 4px;
+    padding: 5px 14px;
+}
+QPushButton:hover  { background-color: #1A4A80; }
+QPushButton:pressed { background-color: #0A2040; }
+
+/* ── ScrollBar ── */
+QScrollBar:vertical   { background: #16213E; width: 8px; }
+QScrollBar::handle:vertical { background: #2A2A5A; border-radius: 4px; }
+QScrollBar:horizontal { background: #16213E; height: 8px; }
+QScrollBar::handle:horizontal { background: #2A2A5A; border-radius: 4px; }
+
+/* ── StatusBar ── */
+QStatusBar { background-color: #0F0F1E; color: #8888AA; }
+
+/* ── GroupBox ── */
+QGroupBox {
+    border: 1px solid #2A2A5A; border-radius: 6px;
+    margin-top: 8px; padding-top: 8px;
+}
+QGroupBox::title { color: #8888AA; subcontrol-position: top left; padding: 0 6px; }

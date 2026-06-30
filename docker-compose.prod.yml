@@ -1,0 +1,38 @@
+# Production overrides — использовать вместе с docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Или просто: make prod
+
+name: jobsearch
+
+services:
+  api:
+    command: []          # убираем --reload, используем CMD из Dockerfile (startup.sh)
+    environment:
+      - DEBUG=false
+    volumes: []          # убираем hot reload volume
+    restart: unless-stopped
+
+  scheduler:
+    volumes: []
+    restart: unless-stopped
+
+  postgres:
+    ports: []            # не открываем порт наружу в prod
+    restart: unless-stopped
+
+  redis:
+    ports: []
+    restart: unless-stopped
+
+  # ── Nginx reverse proxy ───────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+    restart: unless-stopped

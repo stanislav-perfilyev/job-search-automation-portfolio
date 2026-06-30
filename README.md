@@ -1,122 +1,135 @@
 # Job Search Automation
 
-A Python automation system for tracking a C++ developer job search — built with three REST APIs, CI/CD on GitHub Actions, and Telegram-based reporting.
+A production-grade job search automation system written in **Python 3.11 + C++17/Qt6**.  
+All code follows senior engineering standards: custom exceptions, structured logging, RAII, OOP interfaces, unit tests.
 
-## What it does
-
-| Script | Trigger | What it does |
-|---|---|---|
-| `morning_brief.py` | GitHub Actions, 09:00 daily | Fetches new C++ vacancies from hh.kz API + Habr Career RSS + Google Sheets status, sends a Telegram summary |
-| `telegram_monitor.py` | GitHub Actions, every 4 h | Scrapes 8 Telegram channels for C++ job posts, notifies via Telegram Bot |
-| `report.py` | Manual | Builds an analytics chart (matplotlib) from Google Sheets data and sends it to Telegram |
-| `add_vacancy.py` | Manual / via batch script | Appends a single application row to Google Sheets via Sheets API v4 |
-| `batch_add_from_json.py` | Manual | Reads `session_vacancies.json` and adds all entries to Sheets in bulk |
+---
 
 ## Architecture
 
 ```
-GitHub Actions (cron)
-    ├── morning_brief.py  ──► hh.kz RSS API
-    │                    ──► Habr Career RSS
-    │                    ──► Google Sheets API v4  (OAuth2 JWT, service account)
-    │                    ──► Telegram Bot API       (sendMessage)
-    │
-    └── telegram_monitor.py ──► t.me/s/{channel}  (8 channels, keyword filter)
-                              ──► Telegram Bot API  (sendMessage)
-
-Local / manual
-    ├── add_vacancy.py        ──► Google Sheets API v4
-    ├── batch_add_from_json.py ─► add_vacancy.py × N
-    └── report.py             ──► Google Sheets API v4
-                              ──► matplotlib → PNG
-                              ──► Telegram Bot API  (sendPhoto)
+┌─────────────────────────────────────────────────────────────────────┐
+│  Python Automation Layer                                             │
+│  morning_brief.py  ·  session_prompt.py  ·  cover_letter.py        │
+│  telegram_monitor.py · upwork_email_monitor.py · follow_up.py      │
+├─────────────────────────────────────────────────────────────────────┤
+│  FastAPI REST + WebSocket (app/)                                     │
+│  /vacancies  /freelance  /stats  /health  /ws/updates               │
+│  Deployed on Railway  ·  PostgreSQL (Neon)  ·  Redis cache          │
+├─────────────────────────────────────────────────────────────────────┤
+│  PostgreSQL  ·  Google Sheets mirror  ·  Telegram bot               │
+├─────────────────────────────────────────────────────────────────────┤
+│  C++ Portfolio (portfolio/)                                          │
+│  Qt6 Dashboard  ·  WinAPI  ·  QML  ·  D-Bus  ·  MIL-STD-1553      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Stack
+---
 
-- **Python 3.11** — no framework, stdlib + minimal deps
-- **GitHub Actions** — cron CI/CD, secrets management
-- **Google Sheets API v4** — JWT service account auth (works without `google-auth` lib via `cryptography`)
-- **Telegram Bot API** — `sendMessage`, `sendPhoto`
-- **hh.kz RSS** — vacancy feed, parsed with `re`
-- **Habr Career RSS** — parsed with `re`
-- **matplotlib** — dark-theme analytics charts sent as PNG to Telegram
+## C++ Portfolio
 
-## Setup
+| Project | Tech | Highlights |
+|---|---|---|
+| **[Qt Job Dashboard](portfolio/qt-job-dashboard/)** | Qt6, C++17, SQLite/PostgreSQL, QtCharts | QAbstractTableModel, QSortFilterProxyModel, custom exceptions, DiagnosticsDialog, RAII, 18 tests |
+| **[WinAPI Showcase](portfolio/winapi_showcase/)** | C++17, WinAPI | ProcessMonitor, FileWatcher, Named Pipe IPC; RAII handles, 9 tests |
+| **[QML System Monitor](portfolio/qml_system_monitor/)** | Qt6, QML, C++ backend | Live CPU/RAM/disk charts, abstract ISystemStats, 7 tests |
+| **[D-Bus Service](portfolio/dbus_service/)** | C++17, Qt D-Bus | SystemInfoService, typed error signals, client + server, 5 tests |
+| **[DAQ Bug Fix](portfolio/daq-bugfix/)** | C++, multithreading | Fixed race condition in a production DAQ data collection system |
+| **[MIL-STD-1553 Analyzer](portfolio/mil1553_analyzer/)** | Pascal/Delphi | Protocol decoder + simulator for military avionic bus |
 
-### 1. Clone and install
+---
+
+## Python Automation
+
+### Core Scripts
+
+| Script | Purpose |
+|---|---|
+| `morning_brief.py` | Async daily brief: hh.kz + Habr Career vacancies, DB save, Telegram + Google Calendar |
+| `session_prompt.py` | Interactive job search session guide with vacancy selection |
+| `cover_letter.py` | AI cover letter generator via Anthropic Claude (templates A/B/C + `--top` mode) |
+| `telegram_monitor.py` | Monitors C++/Qt/Embedded Telegram channels, filters duplicates via DB |
+| `upwork_email_monitor.py` | Parses Gmail for Upwork job alerts, posts to Telegram |
+| `batch_add_from_json.py` | Bulk vacancy import with retry + partial-write guard |
+| `follow_up.py` | Detects stale applications (7d+), generates follow-up messages |
+| `skill_gap_report.py` | Analyses vacancy requirements vs. profile, ranks skill gaps |
+| `kpi_report.py` | Weekly KPI: applications, response rate, interviews, Connects spent |
+| `sync_to_sheets.py` | PostgreSQL → Google Sheets mirror with charts and formatting |
+
+### Exception Hierarchy (`exceptions.py`)
+
+```
+JobSearchError
+├── ConfigError        # missing env var
+├── DbConnectionError  # PostgreSQL unreachable
+├── DbQueryError       # SQL error
+├── ApiError           # external API failure
+│   ├── HhApiError
+│   ├── AnthropicApiError
+│   └── TelegramApiError
+├── SheetsError        # Google Sheets
+└── IoError            # file operations
+```
+
+### `db.py` — Database Layer
+
+- Custom exceptions: `DbConnectionError`, `DbQueryError`
+- `health_check()` — DB ping, returns `""` if OK or error description
+- `logging.getLogger(__name__)` — structured logging
+- Context manager (`with Database() as db:`)
+- Idempotent `connect()`, RAII-safe `__exit__`
+
+---
+
+## FastAPI REST API
+
+**Live:** `https://web-production-f7596.up.railway.app`
+
+| Endpoint | Description |
+|---|---|
+| `GET /health` | DB + Redis status |
+| `GET/POST /vacancies` | List / add vacancies |
+| `PATCH/DELETE /vacancies/{id}` | Update / delete |
+| `GET/POST /freelance` | Freelance projects |
+| `GET /stats` | Aggregate stats (Redis cached 5 min) |
+| `POST /brief/run` | Trigger morning brief |
+| `WS /ws/updates` | Real-time vacancy stream |
+
+Auth: `Authorization: Bearer <API_TOKEN>` on write endpoints.
+
+---
+
+## Tests
+
+```bash
+pytest test_morning_brief.py         # 18 tests — async, mock aiohttp
+pytest test_api.py                   # 25 tests — FastAPI TestClient, in-memory SQLite
+pytest test_batch_add_from_json.py   # retry logic, partial-write guard
+pytest test_cover_letter.py          # AI prompt building, template selection
+pytest test_monitors.py              # Telegram + Upwork parsers
+# + test_follow_up, test_freelance, test_report_and_add, test_skill_gap_report, test_hh_auth
+```
+
+---
+
+## Quick Start
 
 ```bash
 git clone https://github.com/stanislav-perfilyev/job-search-automation-portfolio.git
 cd job-search-automation-portfolio
-pip install -r requirements.txt
+cp .env.example .env          # fill DATABASE_URL, API_TOKEN, TELEGRAM_BOT_TOKEN, ANTHROPIC_API_KEY
+pip install -r requirements.txt -r requirements_api.txt
+python init_db.py
+uvicorn app.main:app --reload --port 8000
+# or: docker compose up --build
 ```
 
-### 2. Create a Telegram bot
+---
 
-1. Message [@BotFather](https://t.me/BotFather) → `/newbot`
-2. Copy the token
-3. Get your chat ID from [@userinfobot](https://t.me/userinfobot)
+## Tech Stack
 
-### 3. Create a Google service account
+**Python:** asyncio · aiohttp · FastAPI · SQLAlchemy 2 (async) · psycopg2 · Pydantic v2 · APScheduler · anthropic · google-api-python-client
 
-1. [Google Cloud Console](https://console.cloud.google.com/) → Create project → Enable **Google Sheets API**
-2. IAM → Service Accounts → Create → Download JSON key → save as `sheets_key.json` (see `sheets_key.json.example`)
-3. Share your spreadsheet with the service account email (Editor role)
+**C++/Qt:** C++17 · Qt6 · QtCharts · QAbstractTableModel · CMake · CTest · GoogleTest
 
-### 4. Configure environment
-
-```bash
-cp .env.example .env
-# Fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, SPREADSHEET_ID
-```
-
-For local use, source `.env` before running:
-```bash
-export $(cat .env | xargs)
-python morning_brief.py
-```
-
-### 5. Deploy to GitHub Actions
-
-Add these repository secrets (Settings → Secrets → Actions):
-
-| Secret | Value |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
-| `TELEGRAM_CHAT_ID` | Your Telegram chat ID |
-| `SPREADSHEET_ID` | Google Sheets ID from the URL |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | `cat sheets_key.json \| base64 -w 0` |
-
-The workflows run automatically on schedule. Trigger manually from the Actions tab.
-
-## Google Sheets schema
-
-The sheet named `Вакансии` expects columns A–K:
-
-| A | B | C | D | E | F | G | H | I | J | K |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Vacancy | Company | URL | Source | Template | Date (hh) | Date (corp) | Date (social) | Status | Comment | HR contact |
-
-## Usage
-
-```bash
-# Add a vacancy manually
-python add_vacancy.py \
-  --vacancy "C++ Developer" \
-  --company "Acme Corp" \
-  --url "https://hh.kz/vacancy/123" \
-  --source "hh.kz" \
-  --template "B"
-
-# Add multiple vacancies from JSON (fill session_vacancies.json during session)
-python batch_add_from_json.py session_vacancies.json
-
-# Send a session report
-python report.py --mode full    # after a search session
-python report.py --mode check   # after a notification check
-```
-
-## Security
-
-All secrets are passed via environment variables. `sheets_key.json` and `.env` are in `.gitignore` and must never be committed. GitHub Actions uses repository secrets — the raw values are never visible in logs.
+**Infrastructure:** PostgreSQL (Neon) · Redis · Docker · Railway · GitHub Actions · Nginx

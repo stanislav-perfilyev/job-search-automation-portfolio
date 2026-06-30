@@ -1,0 +1,41 @@
+name: Freelance Weekly Pipeline Report
+
+on:
+  schedule:
+    # Каждое воскресенье в 08:00 UTC = 13:00 Алматы
+    - cron: '0 8 * * 0'
+  workflow_dispatch:  # ручной запуск
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests google-auth matplotlib
+
+      - name: Write service account key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$GOOGLE_SERVICE_ACCOUNT_JSON" | base64 -d > sheets_key.json
+
+      - name: Run Weekly Pipeline Report
+        env:
+          FREELANCE_SPREADSHEET_ID:  ${{ secrets.FREELANCE_SPREADSHEET_ID }}
+          TELEGRAM_BOT_TOKEN:        ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:          ${{ secrets.TELEGRAM_CHAT_ID }}
+          UPWORK_CONNECTS_INITIAL:   ${{ secrets.UPWORK_CONNECTS_INITIAL }}
+        run: python freelance_report.py --weekly

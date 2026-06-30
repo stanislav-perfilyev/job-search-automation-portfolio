@@ -1,16 +1,21 @@
-name: Morning Job Search Brief
+name: Morning Job Brief
 
 on:
   schedule:
-    # 04:00 UTC = 09:00 Almaty (UTC+5)
-    - cron: '0 4 * * *'
-  workflow_dispatch:  # manual trigger
+    # 03:10 UTC = 08:10 Almaty (UTC+5); GitHub may delay ~5-10 min, arrives 08:10-08:20
+    - cron: '10 3 * * *'
+  workflow_dispatch:
 
 jobs:
   brief:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -18,12 +23,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install google-auth
 
-      - name: Run morning brief
+      - name: Run Morning Brief
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: python morning_brief.py
