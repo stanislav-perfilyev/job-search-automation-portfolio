@@ -397,7 +397,7 @@ async def fetch_calendar_async(session: aiohttp.ClientSession, token: str) -> li
         "timeMin": to_rfc3339(time_min), "timeMax": to_rfc3339(time_max),
         "singleEvents": "true", "orderBy": "startTime", "maxResults": "20",
     })
-    cal_id = urllib.parse.quote("stasperfiliyev@gmail.com")
+    cal_id = urllib.parse.quote(os.environ.get("GMAIL_ADDRESS", "your@gmail.com"))
     url = f"https://www.googleapis.com/calendar/v3/calendars/{cal_id}/events?{params}"
     xml = await _fetch(session, url, auth_token=token)
     if xml is None:

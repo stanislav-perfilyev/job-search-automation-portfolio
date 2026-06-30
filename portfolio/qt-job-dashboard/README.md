@@ -58,7 +58,7 @@ On Ubuntu: `sudo apt install libqt6sql6-psql`
 ## DB Setup
 
 First launch: **Файл → Настройки**, enter Neon credentials:
-- Host: `ep-shy-violet-atsfwvq4-pooler.c-9.us-east-1.aws.neon.tech`
+- Host: `your-host.neon.tech`
 - Database: `neondb` · User: `jobuser` · Port: `5432`
 
 Credentials stored via `QSettings`.

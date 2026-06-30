@@ -7,7 +7,7 @@ upwork_email_monitor.py — мониторинг писем Upwork через Gm
 Отправляет уведомления в Telegram при важных событиях.
 
 Переменные окружения:
-  GMAIL_ADDRESS       — stasperfiliyev@gmail.com
+  GMAIL_ADDRESS       — your@gmail.com
   GMAIL_APP_PASSWORD  — App Password из Google Account (не обычный пароль)
   TELEGRAM_BOT_TOKEN  — токен бота
   TELEGRAM_CHAT_ID    — ID чата
