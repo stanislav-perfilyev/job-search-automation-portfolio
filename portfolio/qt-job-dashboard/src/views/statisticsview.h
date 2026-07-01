@@ -3,7 +3,7 @@
 
 class VacancySqlModel;
 class QHBoxLayout;
-namespace QtCharts { class QChartView; }
+class QChartView;   // Qt 6: QChartView is in the global namespace (QtCharts namespace removed)
 
 class StatisticsView final : public QWidget {
     Q_OBJECT
@@ -16,13 +16,13 @@ public slots:
 
 private:
     void rebuildCharts();   // safely removes old charts before rebuilding
-    QtCharts::QChartView* buildStatusPie();
-    QtCharts::QChartView* buildMonthlyBar();
-    QtCharts::QChartView* buildSalaryHist();
+    QChartView* buildStatusPie();
+    QChartView* buildMonthlyBar();
+    QChartView* buildSalaryHist();
 
-    VacancySqlModel*      m_model;
-    QHBoxLayout*          m_layout{};
-    QtCharts::QChartView* m_pieView{};
-    QtCharts::QChartView* m_barView{};
-    QtCharts::QChartView* m_histView{};
+    VacancySqlModel* m_model;
+    QHBoxLayout*     m_layout{};
+    QChartView*      m_pieView{};
+    QChartView*      m_barView{};
+    QChartView*      m_histView{};
 };

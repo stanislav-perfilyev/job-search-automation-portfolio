@@ -11,7 +11,7 @@
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QChart>
 
-QT_CHARTS_USE_NAMESPACE
+// Qt 6: QT_CHARTS_USE_NAMESPACE is a no-op; QChartView et al. are in the global namespace.
 
 StatisticsView::StatisticsView(VacancySqlModel* model, QWidget* parent)
     : QWidget(parent), m_model(model)
@@ -140,6 +140,3 @@ QChartView* StatisticsView::buildSalaryHist()
     chart->legend()->hide();
 
     auto* view = new QChartView(chart, this);
-    view->setRenderHint(QPainter::Antialiasing);
-    return view;
-}
