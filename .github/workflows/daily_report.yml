@@ -1,9 +1,6 @@
 name: Daily Job Search Report
 
 on:
-  schedule:
-    # 14:00 UTC = 19:00 Алматы (UTC+5)
-    - cron: '0 14 * * *'
   workflow_dispatch:
 
 jobs:

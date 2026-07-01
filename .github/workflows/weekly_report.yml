@@ -1,9 +1,6 @@
 name: Weekly Job Search Report
 
 on:
-  schedule:
-    # каждую пятницу 12:00 UTC = 17:00 Алматы
-    - cron: '0 12 * * 5'
   workflow_dispatch:
 
 jobs:

@@ -1,9 +1,6 @@
 name: Morning Job Brief
 
 on:
-  schedule:
-    # 03:10 UTC = 08:10 Almaty (UTC+5)
-    - cron: '10 3 * * *'
   workflow_dispatch:
 
 jobs:

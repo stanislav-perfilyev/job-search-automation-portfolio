@@ -1,24 +1,41 @@
 # QML System Monitor — Portfolio Project
 
-Real-time системный монитор: CPU, RAM, Uptime с анимированными gauge-барами.
-Демонстрирует интеграцию C++ backend ↔ QML frontend.
+Real-time system monitor: CPU load, RAM usage, Uptime with animated gauge bars.  
+Demonstrates idiomatic C++ ↔ QML integration using Qt's property binding engine.
 
-## Что демонстрирует
+**Target roles:** Qt/QML developer, Embedded Linux GUI, Aurora OS
 
-**C++ (backend):**
-- `Q_PROPERTY` с `NOTIFY` сигналами — автоматическое обновление QML при изменении данных
-- `QTimer` — периодический опрос (1 сек)
-- Чтение `/proc/stat` и `/proc/meminfo` (Linux) / `GetSystemTimes` + `GlobalMemoryStatusEx` (Windows)
-- Delta-расчёт CPU load между двумя замерами
+## What it demonstrates
 
-**QML (frontend):**
-- `ApplicationWindow` + `ColumnLayout`
-- Inline `component` для переиспользуемого gauge
-- `Behavior on width` — плавная анимация (NumberAnimation + Easing)
-- `required property` — типобезопасные параметры компонента
-- Биндинг на C++ объект через `rootContext()->setContextProperty`
+**C++ backend (`SystemStats`):**
+- `Q_PROPERTY` with `NOTIFY` signals — QML auto-updates on data change without manual refresh
+- `QTimer` at 1-second interval — polling `/proc/stat` and `/proc/meminfo` (Linux) / `GetSystemTimes` + `GlobalMemoryStatusEx` (Windows)
+- Delta-based CPU load calculation between two consecutive reads
+- Cross-platform conditional compilation (`#ifdef Q_OS_LINUX` / `Q_OS_WIN`)
 
-## Сборка
+**QML frontend:**
+- `ApplicationWindow` + `ColumnLayout` — declarative layout
+- Inline reusable `component GaugeItem` — avoids separate file proliferation
+- `Behavior on width { NumberAnimation { easing.type: Easing.OutCubic } }` — smooth 300ms animation
+- `required property` — type-safe parameters for the gauge component
+- Context property binding: `rootContext()->setContextProperty("systemStats", &stats)`
+
+## Architecture
+
+```
+main.cpp
+  └── SystemStats (QObject, lives on main thread)
+        ├── QTimer (1s) → updateStats()
+        │     ├── reads /proc/stat or GetSystemTimes
+        │     ├── computes cpuPercent (delta)
+        │     └── reads memPercent, uptimeSecs
+        └── exposes to QML as "systemStats" context property
+              └── main.qml
+                    └── GaugeItem { value: systemStats.cpuPercent }
+                    └── GaugeItem { value: systemStats.memPercent }
+```
+
+## Build
 
 ```bash
 mkdir build && cd build
@@ -27,12 +44,10 @@ cmake --build .
 ./qml_system_monitor
 ```
 
-## Архитектура
+Requires: Qt 6.2+, CMake 3.21+
 
-```
-main.cpp
-  └── создаёт SystemStats (C++ объект)
-  └── передаёт в QML движок как "systemStats"
-      └── main.qml биндится на systemStats.cpuPercent, .memPercent и т.д.
-          └── GaugeItem component — анимированный progress bar
-```
+## Key design decisions
+
+- **No polling in QML** — all timing logic stays in C++; QML only reacts to signals (correct MVC separation)
+- **Single QObject** — avoids over-engineering for a monitor with few metrics
+- **Reusable GaugeItem** — inline `component` keeps the file count low while enabling DRY layouts

@@ -1,9 +1,6 @@
 name: Freelance Weekly Pipeline Report
 
 on:
-  schedule:
-    # Каждое воскресенье 08:00 UTC = 13:00 Алматы
-    - cron: '0 8 * * 0'
   workflow_dispatch:
 
 jobs:

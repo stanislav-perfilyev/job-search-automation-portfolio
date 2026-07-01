@@ -1,59 +1,69 @@
 # D-Bus Service — Portfolio Project
 
-Qt D-Bus сервис и клиент: демонстрация межпроцессного взаимодействия через session bus.
-Целевая аудитория: вакансии с Aurora OS / ОС Аврора, Linux desktop, embedded Linux.
+Qt D-Bus service + client: inter-process communication over the session bus.  
+Demonstrates the exact IPC pattern used in Aurora OS (ОС Аврора) applications and Linux desktop middleware.
 
-## Что демонстрирует
+**Target roles:** Aurora OS developer, Linux embedded, Qt IPC
 
-**Сервис:**
-- `QDBusConnection::sessionBus()` — подключение к session bus
-- `registerService` — регистрация well-known name (`ru.perfilyev.SystemInfo`)
-- `registerObject` — экспорт C++ объекта как D-Bus object path
-- `Q_CLASSINFO("D-Bus Interface", ...)` — объявление интерфейса
-- `ExportAllSlots` / `ExportAllSignals` — автоэкспорт методов и сигналов
-- Периодический D-Bus сигнал `StatsUpdated` через `QTimer`
+## What it demonstrates
 
-**Клиент:**
-- `QDBusInterface` — proxy-объект для удалённого вызова методов
-- `QDBusReply<T>` — типобезопасный результат вызова
-- `QVariantMap` через D-Bus — передача сложных типов (словарь)
+**Service side:**
+- `QDBusConnection::sessionBus()` — connecting to the session bus
+- `registerService("ru.perfilyev.SystemInfo")` — claiming a well-known name
+- `registerObject("/ru/perfilyev/SystemInfo", ...)` — exporting a C++ object as a D-Bus path
+- `Q_CLASSINFO("D-Bus Interface", "ru.perfilyev.SystemInfo")` — interface declaration in class metadata
+- `ExportAllSlots` / `ExportAllSignals` — auto-export of public slots and signals
+- `QTimer` → periodic `StatsUpdated(QString)` signal broadcast to all listeners
 
-## Архитектура
+**Client side:**
+- `QDBusInterface` — proxy object for calling remote methods
+- `QDBusReply<T>` — type-safe return values
+- `QVariantMap` over D-Bus — passing structured data (dictionary type `a{sv}`)
+- Error handling via `QDBusReply::isValid()`
+
+## D-Bus Interface
 
 ```
-Session D-Bus
-    └── ru.perfilyev.SystemInfo  (well-known name)
-        └── /ru/perfilyev/SystemInfo  (object path)
-            └── ru.perfilyev.SystemInfo  (interface)
-                ├── GetHostname() → String
-                ├── GetMemoryInfo() → Map<String, Variant>
-                ├── GetCpuCount() → Int32
-                ├── GetUptime() → String
-                ├── Echo(String) → String
-                └── Signal: StatsUpdated(String)
+Session Bus
+  └── ru.perfilyev.SystemInfo      (well-known name)
+      └── /ru/perfilyev/SystemInfo  (object path)
+          └── ru.perfilyev.SystemInfo  (interface)
+              ├── GetHostname()  → String
+              ├── GetMemoryInfo() → Map<String, Variant>
+              ├── GetCpuCount()  → Int32
+              ├── GetUptime()    → String
+              ├── Echo(String)   → String
+              └── Signal: StatsUpdated(String)
 ```
 
-## Сборка и запуск (Linux)
+## Build and run (Linux)
 
 ```bash
 mkdir build && cd build
 cmake ..
 cmake --build .
 
-# Терминал 1 — запустить сервис:
+# Terminal 1 — start service:
 ./dbus_service
 
-# Терминал 2 — клиент:
+# Terminal 2 — client:
 ./dbus_client
 
-# Или проверить через dbus-send:
+# Or verify via dbus-send:
 dbus-send --session --print-reply \
   --dest=ru.perfilyev.SystemInfo \
   /ru/perfilyev/SystemInfo \
   ru.perfilyev.SystemInfo.GetHostname
 ```
 
-## Применение (Aurora OS)
+Requires: Qt 6.x with D-Bus support, `dbus-daemon` running on session bus
 
-Aurora OS (ОС Аврора) использует D-Bus как основной IPC-механизм.
-Паттерн service/client через session bus — стандартный для Aurora приложений.
+## Aurora OS relevance
+
+Aurora OS (ОС Аврора, built on Sailfish OS) uses D-Bus as its primary IPC mechanism between UI applications, middleware daemons, and hardware abstraction layers. The service/client pattern with `registerService` + `registerObject` is the standard way to expose system APIs to Aurora apps — making this pattern directly applicable to production Aurora development.
+
+## Key design decisions
+
+- **Well-known name** follows reverse-domain convention — matches Aurora OS naming requirements
+- **`QVariantMap` return type** — avoids custom D-Bus type registration while keeping the API flexible
+- **Signal broadcast** — demonstrates publisher/subscriber pattern over D-Bus without explicit subscriber list
