@@ -32,7 +32,7 @@ try:
 except ImportError:
     pass
 
-from exceptions import ConfigError, DbConnectionError, DbQueryError
+from db.exceptions import ConfigError, DbConnectionError, DbQueryError
 
 logger = logging.getLogger(__name__)
 
