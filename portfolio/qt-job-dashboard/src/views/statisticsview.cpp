@@ -140,3 +140,6 @@ QChartView* StatisticsView::buildSalaryHist()
     chart->legend()->hide();
 
     auto* view = new QChartView(chart, this);
+    view->setRenderHint(QPainter::Antialiasing);
+    return view;
+}
