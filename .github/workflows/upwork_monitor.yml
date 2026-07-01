@@ -2,9 +2,8 @@ name: Upwork Email Monitor
 
 on:
   schedule:
-    # Каждые 30 минут, 24/7
     - cron: '*/30 * * * *'
-  workflow_dispatch:  # ручной запуск для теста
+  workflow_dispatch:
 
 jobs:
   monitor:
@@ -14,11 +13,9 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -32,4 +29,5 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python upwork_email_monitor.py
+          PYTHONPATH:         .
+        run: python automation/upwork_email_monitor.py

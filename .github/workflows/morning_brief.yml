@@ -2,7 +2,7 @@ name: Morning Job Brief
 
 on:
   schedule:
-    # 03:10 UTC = 08:10 Almaty (UTC+5); GitHub may delay ~5-10 min, arrives 08:10-08:20
+    # 03:10 UTC = 08:10 Almaty (UTC+5)
     - cron: '10 3 * * *'
   workflow_dispatch:
 
@@ -14,20 +14,20 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install google-auth
+        run: pip install google-auth aiohttp psycopg2-binary
 
       - name: Run Morning Brief
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN:          ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:            ${{ secrets.TELEGRAM_CHAT_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: python morning_brief.py
+          DATABASE_URL:                ${{ secrets.DATABASE_URL }}
+          PYTHONPATH:                  .
+        run: python automation/morning_brief.py
