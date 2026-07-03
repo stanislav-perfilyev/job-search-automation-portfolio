@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Планировщик: время запуска morning_brief (HH:MM, UTC)
     scheduler_brief_time: str = "05:15"   # 08:15 Алматы = 05:15 UTC
 
+    # ClickHouse (OLAP аналитика, опционально)
+    clickhouse_url: str = ""    # clickhouse://user:pass@host:8123/analytics
+
     # Дополнительно
     debug: bool = False
 

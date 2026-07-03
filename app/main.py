@@ -18,7 +18,7 @@ from app.config import settings
 from app.database import engine
 from app.exceptions import AppError, app_error_handler
 from app.middleware import AccessLogMiddleware, setup_access_log
-from app.routers import brief, freelance, health, stats, vacancies
+from app.routers import analytics, brief, freelance, health, kpi, stats, vacancies
 from app.routers import telegram as tg_router
 from app.scheduler import create_scheduler
 from app.ws import router as ws_router
@@ -95,11 +95,8 @@ app.add_middleware(AccessLogMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", "http://localhost:5173", "http://localhost:8080",
-        "http://127.0.0.1:3000", "http://127.0.0.1:5173", "http://127.0.0.1:8080",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -107,4 +104,21 @@ app.add_middleware(
 # ── Роутеры ───────────────────────────────────────────────────────────────
 app.include_router(health.router)
 app.include_router(vacancies.router)
-a
+app.include_router(freelance.router)
+app.include_router(stats.router)
+app.include_router(brief.router)
+app.include_router(tg_router.router)
+app.include_router(ws_router)
+app.include_router(kpi.router)
+app.include_router(analytics.router)
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return {
+        "service": "Job Search API",
+        "version": "1.1.0",
+        "docs":    "/docs",
+        "health":  "/health",
+        "ws":      "/ws/updates?token=<API_TOKEN>",
+    }

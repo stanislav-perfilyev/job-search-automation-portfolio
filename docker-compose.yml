@@ -9,6 +9,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://jobuser:jobpass@postgres:5432/jobsearch
       - REDIS_URL=redis://redis:6379/0
+      - CLICKHOUSE_URL=clickhouse://analytics:analytics_pass@clickhouse:8123/analytics
       - API_TOKEN=${API_TOKEN:-dev-token-change-me}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
@@ -26,6 +27,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -41,6 +44,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://jobuser:jobpass@postgres:5432/jobsearch
       - REDIS_URL=redis://redis:6379/0
+      - CLICKHOUSE_URL=clickhouse://analytics:analytics_pass@clickhouse:8123/analytics
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - SCHEDULER_BRIEF_TIME=${SCHEDULER_BRIEF_TIME:-05:15}
@@ -80,15 +84,4 @@ services:
   # ── Redis ─────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  pgdata:
+    command: redis-server --maxmemory 6

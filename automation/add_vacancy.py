@@ -23,14 +23,15 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent / ".env")
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 except ImportError:
     pass
 
 from db import Database
+from db.clickhouse_writer import ClickHouseWriter
 
 # ── Логирование в db.log ──────────────────────────────────────────────────
-LOG_FILE = Path(__file__).parent / "db.log"
+LOG_FILE = Path(__file__).resolve().parents[1] / "db.log"
 try:
     logging.basicConfig(
         level=logging.INFO,
@@ -125,6 +126,28 @@ def main():
     try:
         with Database() as db:
             vacancy_id = db.add_vacancy(vacancy)
+            try:
+                db.log_event("vacancy_added", 1.0, {
+                    "source": args.source, "status": status, "vacancy_id": vacancy_id
+                })
+            except Exception:
+                pass  # не прерывать основной поток из-за KPI
+
+        # ── ClickHouse: параллельная OLAP-запись (graceful skip) ──────────
+        skill_list = [s.strip() for s in args.gap.split(",") if s.strip()] if args.gap else []
+        ch = ClickHouseWriter()  # graceful=True по умолчанию
+        ch.log_vacancy_event(
+            vacancy_id=vacancy_id,
+            action=status,
+            source=args.source,
+            company=args.company,
+            skill_gaps=skill_list,
+            event_date=d,
+        )
+        if skill_list:
+            ch.log_skill_gaps(skill_list, event_date=d)
+        ch.close()
+
         msg = (f"add_vacancy | id={vacancy_id} | {args.vacancy} | "
                f"{args.company} | {args.source} | {d} | {status}")
         log.info(msg)
