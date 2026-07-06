@@ -2,7 +2,7 @@
 
 [![Qt Dashboard CI](https://github.com/stanislav-perfilyev/job-search-automation/actions/workflows/qt_ci.yml/badge.svg)](https://github.com/stanislav-perfilyev/job-search-automation/actions/workflows/qt_ci.yml)
 
-**Portfolio project #8** — Desktop application for tracking job search progress.  
+Desktop application for tracking job search progress.  
 Connects to a live PostgreSQL (Neon) database and can launch Python automation scripts directly from the UI.
 
 ## Stack
