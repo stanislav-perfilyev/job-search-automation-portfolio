@@ -754,7 +754,7 @@ def _gtest_build_run(extra_flags: list, out_name: str = '/tmp/gc_gtest_run'):
            [str(glib), '-o', out_name])
     rc, out, err = run(cmd, cwd=DIR, timeout=180)
     if rc != 0:
-        return False, 0, 0, err[:500]
+        return None, 0, 0, "ASAN/TSAN компиляция не удалась:\n" + (out + err)[-1000:]
 
     rc2, out2, err2 = run([out_name, '--gtest_color=no'], cwd=DIR, timeout=90)
     combined = out2 + err2
@@ -774,7 +774,10 @@ if args.gtest:
     else:
         ok_flag, n_pass, n_fail, detail = _gtest_build_run([], '/tmp/gc_gtest_direct')
         if ok_flag is None:
-            warn(f"GTest: {detail}")
+            if "не найдены" in detail:
+                warn("GTest: libgtest_main.a или gtest.h не найдены")
+            else:
+                fail(f"GTest: {detail[:600]}")
         elif ok_flag:
             ok(f"GTest прямой: {n_pass} тестов ✓")
         else:
@@ -790,10 +793,10 @@ if args.asan:
     if not HAS_CPP:
         warn("ASAN: C++ файлов не найдено")
     else:
-        asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-g']
+        asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-g', '-Wno-unused-result']
         ok_flag, n_pass, n_fail, detail = _gtest_build_run(asan_flags, '/tmp/gc_asan')
         if ok_flag is None:
-            warn(f"ASAN: {detail}")
+            fail(f"ASAN: {detail[:600]}")
         elif ok_flag:
             # Дополнительно проверяем что ASAN не выдал ошибки в stderr
             asan_hit = re.search(r'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:', detail)
@@ -807,10 +810,12 @@ if args.asan:
         else:
             asan_hit = re.search(r'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:', detail)
             if asan_hit:
-                fail(f"ASAN: {n_fail} тестов упали + ASAN ошибка памяти/UB!")
+                fail(f"ASAN: {n_fail} тестов упали + ASAN поймал ошибку памяти/UB!")
+            elif n_fail == 0 and n_pass == 0:
+                fail(f"ASAN: бинарь завершился с ошибкой (тесты не запустились)")
             else:
                 fail(f"ASAN: {n_fail} тестов упали")
-            for line in detail.splitlines()[-12:]:
+            for line in detail.splitlines()[-14:]:
                 print(f"    {line}")
 
 # ══════════════════════════════════════════════════════════════════════
@@ -821,10 +826,10 @@ if args.tsan:
     if not HAS_CPP:
         warn("TSAN: C++ файлов не найдено")
     else:
-        tsan_flags = ['-fsanitize=thread', '-g']
+        tsan_flags = ['-fsanitize=thread', '-g', '-Wno-unused-result']
         ok_flag, n_pass, n_fail, detail = _gtest_build_run(tsan_flags, '/tmp/gc_tsan')
         if ok_flag is None:
-            warn(f"TSAN: {detail}")
+            fail(f"TSAN: {detail[:600]}")
         elif ok_flag:
             race_hit = re.search(r'WARNING: ThreadSanitizer|DATA RACE', detail)
             if race_hit:
@@ -838,9 +843,11 @@ if args.tsan:
             race_hit = re.search(r'WARNING: ThreadSanitizer|DATA RACE', detail)
             if race_hit:
                 fail(f"TSAN: {n_fail} тестов упали + найдена гонка данных!")
+            elif n_fail == 0 and n_pass == 0:
+                fail(f"TSAN: бинарь завершился с ошибкой (тесты не запустились)")
             else:
                 fail(f"TSAN: {n_fail} тестов упали")
-            for line in detail.splitlines()[-12:]:
+            for line in detail.splitlines()[-14:]:
                 print(f"    {line}")
 
 # ══════════════════════════════════════════════════════════════════════
