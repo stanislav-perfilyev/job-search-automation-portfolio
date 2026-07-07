@@ -113,8 +113,15 @@ else: warn("README.md: отсутствует")
 if (DIR/'.gitignore').exists(): ok(".gitignore: есть")
 else: warn(".gitignore: отсутствует")
 
-ci_ymls = list((DIR/'.github'/'workflows').glob('*.yml')) if (DIR/'.github'/'workflows').exists() else []
-if ci_ymls: ok(f"CI workflow: {', '.join(f.name for f in ci_ymls)}")
+def find_ci(d):
+    for p in [d, d.parent, d.parent.parent]:
+        wf = p / '.github' / 'workflows'
+        if wf.exists():
+            ymls = list(wf.glob('*.yml'))
+            if ymls: return ymls, ('' if p == d else f' (в {p.name}/)')
+    return [], ''
+ci_ymls, ci_note = find_ci(DIR)
+if ci_ymls: ok(f"CI workflow{ci_note}: {', '.join(f.name for f in ci_ymls)}")
 else: fail("CI workflow: .github/workflows/*.yml не найден")
 
 # Секреты
@@ -174,11 +181,16 @@ else:
 if HAS_CPP:
     hdr("БЛОК 1: C++ — СТРУКТУРА")
 
-    miss_pragma = [f for f in cpp_h if '#pragma once' not in read(f)]
+    def has_guard(f):
+        txt = read(f)
+        return '#pragma once' in txt or (
+            re.search(r'^#ifndef\s+\w', txt, re.MULTILINE) and
+            re.search(r'^#define\s+\w', txt, re.MULTILINE))
+    miss_pragma = [f for f in cpp_h if not has_guard(f)]
     if miss_pragma:
-        for f in miss_pragma: fail(f"#pragma once missing: {rel(f)}")
+        for f in miss_pragma: fail(f"#pragma once / include guard missing: {rel(f)}")
     else:
-        ok(f"#pragma once: все {len(cpp_h)} заголовков защищены")
+        ok(f"#pragma once / include guard: все {len(cpp_h)} заголовков защищены")
 
     cmake_files = find_files(['CMakeLists.txt'])
     all_cmake = "\n".join(read(f) for f in cmake_files)
@@ -223,10 +235,12 @@ if HAS_CPP:
             p = line.find('(')
             if p < 0: continue
             if '=' in line[:p]: continue
+            if ';' in line[:p]: continue  # поле структуры или конец стейтмента
             m = FUNC_LINE.match(line)
             if not m: continue
             type_part, func_name = m.group(2).strip(), m.group(3)
             if func_name in KEYWORDS | COROUTINE_NAMES: continue
+            if '(' in type_part: continue  # не тип возврата (ctor init list, throw)
             if re.search(r'operator\b|~\w', line[:p]): continue
             if re.search(r'\bvoid\b', type_part) or re.search(r'cast<|static_assert|assert\b', line): continue
             if NODISCARD_TYPE.search(type_part):
@@ -289,6 +303,7 @@ if HAS_CPP:
             if not m: continue
             func_name = m.group(3)
             if func_name in KEYWORDS: continue  # sizeof, alignof, etc.
+            if func_name in COROUTINE_NAMES: continue  # promise_type методы
             if GETTER_NAME_RE.match(func_name):
                 const_issues.append(f"  {rel(f)}:{i}: {s[:80]}")
     if const_issues:
@@ -334,6 +349,7 @@ if HAS_CPP:
         for i, line in enumerate(read(f).splitlines(), 1):
             s = line.strip()
             if s.startswith(('//', '*')): continue
+            if '[' in line.split('(')[0]: continue  # лямбда — по значению OK
             if STR_BY_VAL.search(line):
                 # Пропустить если это const std::string& или std::string&&
                 if re.search(r'const\s+std::string\s*&|std::string\s*&&|std::string_view', line): continue
@@ -352,7 +368,8 @@ if HAS_CPP:
             s = line.strip()
             if s.startswith(('//', '*')): continue
             if re.search(r'=\s*delete\b|=\s*default\b', line): continue
-            if RAW_NEW_RE.search(line) or RAW_DEL_RE.search(line):
+            code_part = line.split('//')[0]  # игнорировать // комментарии
+            if RAW_NEW_RE.search(code_part) or RAW_DEL_RE.search(code_part):
                 raii_issues.append(f"  {rel(f)}:{i}: {s[:80]}")
     if raii_issues:
         for s in raii_issues[:5]: warn(f"сырой new/delete: {s.strip()}")
@@ -381,11 +398,18 @@ if HAS_CPP:
 # ══════════════════════════════════════════════════════════════════════
 if HAS_CPP:
     hdr("БЛОК 4: C++ — тесты")
-    test_cpp = [f for f in cpp_src + find_files(['.cxx','.cc'])
+    test_cpp = [f for f in cpp_src + find_files(['.cxx','.cc','.c'])
                 if re.search(r'test', f.name, re.IGNORECASE)
                 or re.search(r'test', f.parent.name, re.IGNORECASE)]
-    if test_cpp: ok(f"Тесты C++: {len(test_cpp)} файлов — {', '.join(f.name for f in test_cpp[:5])}")
-    else: fail("Тесты C++: test_*.cpp не найдено")
+    cmake_has_tests = any(
+        re.search(r'\badd_test\s*\(', read(f), re.MULTILINE)
+        for f in find_files(['CMakeLists.txt']))
+    if test_cpp:
+        ok(f"Тесты C++: {len(test_cpp)} файлов — {', '.join(f.name for f in test_cpp[:5])}")
+    elif cmake_has_tests:
+        ok("Тесты C++: CTest add_test() зарегистрированы")
+    else:
+        fail("Тесты C++: test_*.cpp не найдено и add_test() не зарегистрированы")
 
 # ══════════════════════════════════════════════════════════════════════
 # БЛОК 5: Python — синтаксис + mypy
