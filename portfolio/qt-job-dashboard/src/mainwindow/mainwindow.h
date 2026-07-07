@@ -27,11 +27,11 @@ private slots:
     void updateKpis();
 
 private:
-    bool    connectDb();
+    [[nodiscard]] bool    connectDb();
     void    setupUi();
     void    applyDarkTheme();
     void    createStatusBar();
-    QString projectRoot() const;
+    [[nodiscard]] QString projectRoot() const;
 
     VacancySqlModel* m_model{};
     VacancyView*     m_vacancyView{};
