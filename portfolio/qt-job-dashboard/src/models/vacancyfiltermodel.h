@@ -12,7 +12,7 @@ public:
     void setStatusFilter(const QString& status);   // empty = all
 
 protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    [[nodiscard]] bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
 private:
     QString m_text;
