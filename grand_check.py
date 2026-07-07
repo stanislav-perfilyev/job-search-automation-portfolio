@@ -241,6 +241,14 @@ if HAS_CPP:
             type_part, func_name = m.group(2).strip(), m.group(3)
             if func_name in KEYWORDS | COROUTINE_NAMES: continue
             if '(' in type_part: continue  # не тип возврата (ctor init list, throw)
+            # Пропустить: переменная-ctor вида Type<T> var(expr);
+            # Глубокий отступ (≥8) + строка оканчивается на ); + без типов в скобках
+            if len(line) - len(line.lstrip()) >= 8 and line.rstrip().endswith(');'):
+                _pm = re.search(r'\(([^)]*)\)', line)
+                if _pm and not re.search(
+                    r'\b(?:const|int|long|bool|char|float|double|size_t|uint|std::)\b',
+                    _pm.group(1)):
+                    continue  # ctor call: results(n), count(0), etc.
             if re.search(r'operator\b|~\w', line[:p]): continue
             if re.search(r'\bvoid\b', type_part) or re.search(r'cast<|static_assert|assert\b', line): continue
             if NODISCARD_TYPE.search(type_part):
@@ -392,6 +400,62 @@ if HAS_CPP:
         for s in ts_issues: fail(f"multi-<< в MT-файле: {s.strip()}")
     else:
         ok("thread safety: cout chains не найдены")
+
+
+    # ── MT-проверки (v2.2) ────────────────────────────────────────────────────
+
+    # 1. raw mutex.lock() / mutex.unlock() без RAII (опасно: утечка лока при исключении)
+    RAW_LOCK_RE   = re.compile(r'\w+\.(lock|try_lock)\s*\(\s*\)')
+    RAW_UNLOCK_RE = re.compile(r'\w+\.unlock\s*\(\s*\)')
+    RAII_LOCK_RE  = re.compile(r'(?:std::)?(unique_lock|lock_guard|scoped_lock|shared_lock)')
+    raw_lock_issues = []
+    for f in cpp_h + cpp_src:
+        text = read(f)
+        if not RAW_LOCK_RE.search(text): continue
+        # WARN только если в том же файле нет RAII-обёртки
+        has_raii = bool(RAII_LOCK_RE.search(text))
+        for i, line in enumerate(text.splitlines(), 1):
+            s = line.strip()
+            if s.startswith(('//', '*')): continue
+            if RAW_LOCK_RE.search(line) or RAW_UNLOCK_RE.search(line):
+                if not has_raii:  # только если совсем нет RAII
+                    raw_lock_issues.append(f"  {rel(f)}:{i}: {s[:80]}")
+    if raw_lock_issues:
+        for s in raw_lock_issues[:5]: warn(f"raw mutex.lock() без RAII: {s.strip()}")
+    else:
+        ok("MT: raw lock/unlock — RAII обёртки используются корректно")
+
+    # 2. volatile используется как механизм синхронизации (частая ошибка в C++)
+    #    volatile корректен для MMIO/signal, но не для межпоточной синхронизации
+    VOLATILE_VAR_RE = re.compile(r'volatile\s+(?:int|long|bool|uint|char|double|float|std::)')
+    volatile_issues = []
+    for f in cpp_h + cpp_src:
+        for i, line in enumerate(read(f).splitlines(), 1):
+            s = line.strip()
+            if s.startswith(('//', '*')): continue
+            if 'sig_atomic_t' in line: continue   # корректное использование volatile
+            if VOLATILE_VAR_RE.search(line):
+                volatile_issues.append(f"  {rel(f)}:{i}: {s[:80]}")
+    if volatile_issues:
+        for s in volatile_issues[:5]: warn(f"volatile как MT-синхронизация (→ std::atomic): {s.strip()}")
+    else:
+        ok("MT: volatile не используется как синхронизация")
+
+    # 3. std::atomic без явного memory_order (неявный seq_cst — может быть излишне тяжёлым)
+    ATOMIC_OP_RE      = re.compile(r'\w+\.(load|store|fetch_add|fetch_sub|fetch_or|fetch_and|compare_exchange_weak|compare_exchange_strong)\s*\(')
+    EXPLICIT_MO_RE    = re.compile(r'memory_order_')
+    atomic_mo_issues  = []
+    for f in cpp_h + cpp_src:
+        for i, line in enumerate(read(f).splitlines(), 1):
+            s = line.strip()
+            if s.startswith(('//', '*')): continue
+            if ATOMIC_OP_RE.search(line) and not EXPLICIT_MO_RE.search(line):
+                atomic_mo_issues.append(f"  {rel(f)}:{i}: {s[:80]}")
+    if atomic_mo_issues:
+        for s in atomic_mo_issues[:5]:
+            warn(f"atomic без явного memory_order (seq_cst по умолчанию): {s.strip()}")
+    else:
+        ok("MT: std::atomic — явные memory_order указаны")
 
 # ══════════════════════════════════════════════════════════════════════
 # БЛОК 4: C++ — ТЕСТЫ
