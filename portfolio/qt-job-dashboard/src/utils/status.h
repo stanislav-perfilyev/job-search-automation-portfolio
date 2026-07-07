@@ -11,11 +11,11 @@ namespace Status {
     inline constexpr char Offer[]     = "Оффер";
     inline constexpr char Rejected[]  = "Отказ";
 
-    inline QStringList all() {
+    [[nodiscard]] inline QStringList all() {
         return { Applied, Viewed, Interview, Offer, Rejected };
     }
     // Returns true if this status counts as "active" (in pipeline)
-    inline bool isActive(const QString& s) {
+    [[nodiscard]] inline bool isActive(const QString& s) {
         return s == Applied || s == Viewed;
     }
 } // namespace Status
