@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-ГРАНД ЧЕК v2 — полный senior-контроль проекта.
+ГРАНД ЧЕК v2.3 — полный senior-контроль проекта.
 Языки: C++, Python, Java, смешанные.
-Использование: python3 grand_check.py [PROJECT_DIR] [--strict] [--compile] [--test]
+Использование: python3 grand_check.py [PROJECT_DIR] [--strict] [--compile] [--test] [--gtest]
 """
 
 import sys, re, os, pathlib, ast, subprocess, argparse, collections
@@ -13,6 +13,7 @@ ap.add_argument('project_dir', nargs='?', default='.')
 ap.add_argument('--strict',  action='store_true', help='WARN → FAIL (нет терпимости к предупреждениям)')
 ap.add_argument('--compile', action='store_true', help='Попытка сборки (cmake / py_compile)')
 ap.add_argument('--test',    action='store_true', help='Запуск тестов (требует --compile для C++)')
+ap.add_argument('--gtest',   action='store_true', help='Прямая GTest компиляция через g++ (без cmake)')
 args = ap.parse_args()
 
 DIR    = pathlib.Path(args.project_dir).resolve()
@@ -99,6 +100,7 @@ flags = []
 if STRICT:        flags.append("--strict")
 if args.compile:  flags.append("--compile")
 if args.test:     flags.append("--test")
+if args.gtest:    flags.append("--gtest")
 if flags: print(f"  Флаги: {' '.join(flags)}")
 print(f"{B}{'═'*62}{NC}")
 
@@ -694,6 +696,95 @@ if args.test:
             warn("pytest: не установлен (pip install pytest)")
         else:
             fail(f"pytest: тесты упали\n{out[-500:]}")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 10: --gtest (прямая компиляция GTest через g++, без cmake)
+# ══════════════════════════════════════════════════════════════════════
+if args.gtest:
+    hdr("БЛОК 10: GTEST (прямой g++)")
+
+    if not HAS_CPP:
+        warn("GTest: C++ файлов не найдено")
+    else:
+        # Найти test_*.cpp с подключением GTest
+        gtest_test_files = sorted(DIR.rglob('test_*.cpp'))
+        gtest_test_files = [
+            f for f in gtest_test_files
+            if 'gtest' in f.read_text(errors='ignore').lower()
+            and 'build' not in str(f) and 'build_tmp' not in str(f)
+        ]
+
+        if not gtest_test_files:
+            warn("GTest: test_*.cpp с #include <gtest/gtest.h> не найдены")
+        else:
+            # Поиск libgtest_main.a
+            glib_candidates = [
+                pathlib.Path('/tmp/libgtest_main.a'),
+                pathlib.Path('/usr/lib/libgtest_main.a'),
+                pathlib.Path('/usr/local/lib/libgtest_main.a'),
+                pathlib.Path('/usr/lib/x86_64-linux-gnu/libgtest_main.a'),
+            ]
+            glib = next((p for p in glib_candidates if p.exists()), None)
+
+            # Поиск gtest/gtest.h
+            ginc_candidates = [
+                pathlib.Path('/tmp/gtest-src/googletest/include'),
+                pathlib.Path('/usr/include'),
+                pathlib.Path('/usr/local/include'),
+            ]
+            ginc = next((p for p in ginc_candidates if (p / 'gtest/gtest.h').exists()), None)
+
+            if not glib:
+                warn(f"GTest: libgtest_main.a не найдена — "
+                     f"установить: cd /tmp && git clone --depth=1 https://github.com/google/googletest && "
+                     f"cd googletest/googletest && g++ -std=c++17 -c src/gtest-all.cc src/gtest_main.cc && "
+                     f"ar rcs /tmp/libgtest_main.a gtest-all.o gtest_main.o")
+            elif not ginc:
+                warn("GTest: gtest/gtest.h не найден — установить googletest или apt-get install libgtest-dev")
+            else:
+                # Собрать исходники проекта (не тесты, не build/, без int main)
+                def _has_main(f: pathlib.Path) -> bool:
+                    try:
+                        txt = f.read_text(errors='ignore')
+                        return bool(re.search(r'int\s+main\s*\(', txt))
+                    except Exception:
+                        return True
+
+                src_cpps = [
+                    f for f in sorted(DIR.rglob('*.cpp'))
+                    if not any(x in str(f) for x in ['test_', '/build', 'build_tmp', '_test.cpp'])
+                    and not _has_main(f)
+                ]
+                inc_dirs = [str(ginc), str(DIR)] + [
+                    str(d) for d in [DIR / 'include', DIR / 'src'] if d.exists()
+                ]
+                out_bin = pathlib.Path('/tmp/gc_gtest_direct')
+
+                compile_cmd = (
+                    ['g++', '-std=c++20', '-O2', '-pthread'] +
+                    [f'-I{d}' for d in inc_dirs] +
+                    [str(f) for f in src_cpps + gtest_test_files] +
+                    [str(glib), '-o', str(out_bin)]
+                )
+                rc, out, err = run(compile_cmd, cwd=DIR, timeout=180)
+                if rc != 0:
+                    fail(f"GTest компиляция (g++): FAILED")
+                    for line in err.splitlines()[:8]:
+                        print(f"    {line}")
+                else:
+                    rc2, out2, err2 = run(
+                        [str(out_bin), '--gtest_color=no'], cwd=DIR, timeout=60
+                    )
+                    m_pass = re.search(r'\[  PASSED  \] (\d+) test', out2)
+                    m_fail = re.search(r'\[  FAILED  \] (\d+) test', out2)
+                    if rc2 == 0 and m_pass:
+                        ok(f"GTest прямой: {m_pass.group(1)} тестов ✓ "
+                           f"({len(gtest_test_files)} файлов, {len(src_cpps)} src)")
+                    else:
+                        nf = m_fail.group(1) if m_fail else '?'
+                        fail(f"GTest прямой: {nf} тестов упали")
+                        for line in out2.splitlines()[-15:]:
+                            print(f"    {line}")
 
 # ══════════════════════════════════════════════════════════════════════
 # ИТОГ
