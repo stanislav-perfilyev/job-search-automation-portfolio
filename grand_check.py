@@ -748,10 +748,14 @@ def _gtest_build_run(extra_flags: list, out_name: str = '/tmp/gc_gtest_run'):
                 and not _has_main(f)]
     inc_dirs = [str(ginc), str(DIR)] + [str(d) for d in [DIR/'include', DIR/'src'] if d.exists()]
 
+    # system install: libgtest_main.a = main() only, libgtest.a = framework
+    # built from source: libgtest_main.a = everything merged
+    glib_core = glib.parent / 'libgtest.a'
+    link_libs = [str(glib)] + ([str(glib_core)] if glib_core.exists() else [])
     cmd = (['g++', '-std=c++20', '-O1', '-pthread'] + extra_flags +
            [f'-I{d}' for d in inc_dirs] +
            [str(f) for f in src_cpps + gtest_files] +
-           [str(glib), '-o', out_name])
+           link_libs + ['-o', out_name])
     rc, out, err = run(cmd, cwd=DIR, timeout=180)
     if rc != 0:
         return None, 0, 0, "ASAN/TSAN компиляция не удалась:\n" + (out + err)[-1000:]
