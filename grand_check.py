@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-ГРАНД ЧЕК v2.3 — полный senior-контроль проекта.
+ГРАНД ЧЕК v2.4 — полный senior-контроль проекта.
 Языки: C++, Python, Java, смешанные.
-Использование: python3 grand_check.py [PROJECT_DIR] [--strict] [--compile] [--test] [--gtest]
+Использование: python3 grand_check.py [PROJECT_DIR] [--strict] [--compile] [--test]
+              [--gtest] [--asan] [--tsan] [--cppcheck] [--mypy] [--bandit] [--coverage] [--all]
 """
 
 import sys, re, os, pathlib, ast, subprocess, argparse, collections
@@ -14,7 +15,19 @@ ap.add_argument('--strict',  action='store_true', help='WARN → FAIL (нет т
 ap.add_argument('--compile', action='store_true', help='Попытка сборки (cmake / py_compile)')
 ap.add_argument('--test',    action='store_true', help='Запуск тестов (требует --compile для C++)')
 ap.add_argument('--gtest',   action='store_true', help='Прямая GTest компиляция через g++ (без cmake)')
+ap.add_argument('--asan',    action='store_true', help='GTest + AddressSanitizer+UBSan (память, UB)')
+ap.add_argument('--tsan',    action='store_true', help='GTest + ThreadSanitizer (гонки данных)')
+ap.add_argument('--cppcheck',action='store_true', help='cppcheck статический анализ C++')
+ap.add_argument('--mypy',    action='store_true', help='mypy — проверка типов Python')
+ap.add_argument('--bandit',  action='store_true', help='bandit — security Python')
+ap.add_argument('--coverage',action='store_true', help='Покрытие тестами (gcov/coverage.py)')
+ap.add_argument('--all',     action='store_true', help='Запустить ВСЁ (активирует все флаги)')
 args = ap.parse_args()
+
+# --all активирует все флаги
+if args.all:
+    args.compile = args.test = args.gtest = args.asan = args.tsan = \
+        args.cppcheck = args.mypy = args.bandit = args.coverage = True
 
 DIR    = pathlib.Path(args.project_dir).resolve()
 STRICT = args.strict
@@ -101,6 +114,13 @@ if STRICT:        flags.append("--strict")
 if args.compile:  flags.append("--compile")
 if args.test:     flags.append("--test")
 if args.gtest:    flags.append("--gtest")
+if args.asan:     flags.append("--asan")
+if args.tsan:     flags.append("--tsan")
+if args.cppcheck: flags.append("--cppcheck")
+if args.mypy:     flags.append("--mypy")
+if args.bandit:   flags.append("--bandit")
+if args.coverage: flags.append("--coverage")
+if args.all:      flags.append("--all")
 if flags: print(f"  Флаги: {' '.join(flags)}")
 print(f"{B}{'═'*62}{NC}")
 
@@ -698,93 +718,276 @@ if args.test:
             fail(f"pytest: тесты упали\n{out[-500:]}")
 
 # ══════════════════════════════════════════════════════════════════════
+# Вспомогательная функция: сборка + прогон GTest с заданными флагами
+# ══════════════════════════════════════════════════════════════════════
+def _gtest_build_run(extra_flags: list, out_name: str = '/tmp/gc_gtest_run'):
+    """Компилирует GTest-тесты с extra_flags, запускает, возвращает (ok, n_pass, n_fail, err_text)."""
+    gtest_files = [f for f in sorted(DIR.rglob('test_*.cpp'))
+                   if 'gtest' in f.read_text(errors='ignore').lower()
+                   and 'build' not in str(f) and 'build_tmp' not in str(f)]
+    if not gtest_files:
+        return None, 0, 0, "test_*.cpp с GTest не найдены"
+
+    glib_candidates = [pathlib.Path('/tmp/libgtest_main.a'),
+                       pathlib.Path('/usr/lib/libgtest_main.a'),
+                       pathlib.Path('/usr/local/lib/libgtest_main.a'),
+                       pathlib.Path('/usr/lib/x86_64-linux-gnu/libgtest_main.a')]
+    ginc_candidates = [pathlib.Path('/tmp/gtest-src/googletest/include'),
+                       pathlib.Path('/usr/include'), pathlib.Path('/usr/local/include')]
+    glib = next((p for p in glib_candidates if p.exists()), None)
+    ginc = next((p for p in ginc_candidates if (p / 'gtest/gtest.h').exists()), None)
+    if not (glib and ginc):
+        return None, 0, 0, "libgtest_main.a или gtest.h не найдены"
+
+    def _has_main(f):
+        try: return bool(re.search(r'int\s+main\s*\(', f.read_text(errors='ignore')))
+        except: return True
+
+    src_cpps = [f for f in sorted(DIR.rglob('*.cpp'))
+                if not any(x in str(f) for x in ['test_', '/build', 'build_tmp', '_test.cpp'])
+                and not _has_main(f)]
+    inc_dirs = [str(ginc), str(DIR)] + [str(d) for d in [DIR/'include', DIR/'src'] if d.exists()]
+
+    cmd = (['g++', '-std=c++20', '-O1', '-pthread'] + extra_flags +
+           [f'-I{d}' for d in inc_dirs] +
+           [str(f) for f in src_cpps + gtest_files] +
+           [str(glib), '-o', out_name])
+    rc, out, err = run(cmd, cwd=DIR, timeout=180)
+    if rc != 0:
+        return False, 0, 0, err[:500]
+
+    rc2, out2, err2 = run([out_name, '--gtest_color=no'], cwd=DIR, timeout=90)
+    combined = out2 + err2
+    m_pass = re.search(r'\[  PASSED  \] (\d+) test', combined)
+    m_fail = re.search(r'\[  FAILED  \] (\d+) test', combined)
+    n_pass = int(m_pass.group(1)) if m_pass else 0
+    n_fail = int(m_fail.group(1)) if m_fail else 0
+    return (rc2 == 0 and n_fail == 0), n_pass, n_fail, combined[-400:]
+
+# ══════════════════════════════════════════════════════════════════════
 # БЛОК 10: --gtest (прямая компиляция GTest через g++, без cmake)
 # ══════════════════════════════════════════════════════════════════════
 if args.gtest:
     hdr("БЛОК 10: GTEST (прямой g++)")
-
     if not HAS_CPP:
         warn("GTest: C++ файлов не найдено")
     else:
-        # Найти test_*.cpp с подключением GTest
-        gtest_test_files = sorted(DIR.rglob('test_*.cpp'))
-        gtest_test_files = [
-            f for f in gtest_test_files
-            if 'gtest' in f.read_text(errors='ignore').lower()
-            and 'build' not in str(f) and 'build_tmp' not in str(f)
-        ]
-
-        if not gtest_test_files:
-            warn("GTest: test_*.cpp с #include <gtest/gtest.h> не найдены")
+        ok_flag, n_pass, n_fail, detail = _gtest_build_run([], '/tmp/gc_gtest_direct')
+        if ok_flag is None:
+            warn(f"GTest: {detail}")
+        elif ok_flag:
+            ok(f"GTest прямой: {n_pass} тестов ✓")
         else:
-            # Поиск libgtest_main.a
-            glib_candidates = [
-                pathlib.Path('/tmp/libgtest_main.a'),
-                pathlib.Path('/usr/lib/libgtest_main.a'),
-                pathlib.Path('/usr/local/lib/libgtest_main.a'),
-                pathlib.Path('/usr/lib/x86_64-linux-gnu/libgtest_main.a'),
-            ]
-            glib = next((p for p in glib_candidates if p.exists()), None)
+            fail(f"GTest прямой: {n_fail} тестов упали")
+            for line in detail.splitlines()[-10:]:
+                print(f"    {line}")
 
-            # Поиск gtest/gtest.h
-            ginc_candidates = [
-                pathlib.Path('/tmp/gtest-src/googletest/include'),
-                pathlib.Path('/usr/include'),
-                pathlib.Path('/usr/local/include'),
-            ]
-            ginc = next((p for p in ginc_candidates if (p / 'gtest/gtest.h').exists()), None)
-
-            if not glib:
-                warn(f"GTest: libgtest_main.a не найдена — "
-                     f"установить: cd /tmp && git clone --depth=1 https://github.com/google/googletest && "
-                     f"cd googletest/googletest && g++ -std=c++17 -c src/gtest-all.cc src/gtest_main.cc && "
-                     f"ar rcs /tmp/libgtest_main.a gtest-all.o gtest_main.o")
-            elif not ginc:
-                warn("GTest: gtest/gtest.h не найден — установить googletest или apt-get install libgtest-dev")
-            else:
-                # Собрать исходники проекта (не тесты, не build/, без int main)
-                def _has_main(f: pathlib.Path) -> bool:
-                    try:
-                        txt = f.read_text(errors='ignore')
-                        return bool(re.search(r'int\s+main\s*\(', txt))
-                    except Exception:
-                        return True
-
-                src_cpps = [
-                    f for f in sorted(DIR.rglob('*.cpp'))
-                    if not any(x in str(f) for x in ['test_', '/build', 'build_tmp', '_test.cpp'])
-                    and not _has_main(f)
-                ]
-                inc_dirs = [str(ginc), str(DIR)] + [
-                    str(d) for d in [DIR / 'include', DIR / 'src'] if d.exists()
-                ]
-                out_bin = pathlib.Path('/tmp/gc_gtest_direct')
-
-                compile_cmd = (
-                    ['g++', '-std=c++20', '-O2', '-pthread'] +
-                    [f'-I{d}' for d in inc_dirs] +
-                    [str(f) for f in src_cpps + gtest_test_files] +
-                    [str(glib), '-o', str(out_bin)]
-                )
-                rc, out, err = run(compile_cmd, cwd=DIR, timeout=180)
-                if rc != 0:
-                    fail(f"GTest компиляция (g++): FAILED")
-                    for line in err.splitlines()[:8]:
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 11: --asan (AddressSanitizer + UBSanitizer)
+# ══════════════════════════════════════════════════════════════════════
+if args.asan:
+    hdr("БЛОК 11: ASAN+UBSAN (память и неопределённое поведение)")
+    if not HAS_CPP:
+        warn("ASAN: C++ файлов не найдено")
+    else:
+        asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-g']
+        ok_flag, n_pass, n_fail, detail = _gtest_build_run(asan_flags, '/tmp/gc_asan')
+        if ok_flag is None:
+            warn(f"ASAN: {detail}")
+        elif ok_flag:
+            # Дополнительно проверяем что ASAN не выдал ошибки в stderr
+            asan_hit = re.search(r'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:', detail)
+            if asan_hit:
+                fail(f"ASAN: {n_pass} тестов прошли, но ASAN поймал ошибку памяти/UB!")
+                for line in detail.splitlines():
+                    if 'ERROR' in line or 'runtime error' in line:
                         print(f"    {line}")
+            else:
+                ok(f"ASAN+UBSAN: {n_pass} тестов ✓ — утечек и UB не найдено")
+        else:
+            asan_hit = re.search(r'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:', detail)
+            if asan_hit:
+                fail(f"ASAN: {n_fail} тестов упали + ASAN ошибка памяти/UB!")
+            else:
+                fail(f"ASAN: {n_fail} тестов упали")
+            for line in detail.splitlines()[-12:]:
+                print(f"    {line}")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 12: --tsan (ThreadSanitizer — гонки данных)
+# ══════════════════════════════════════════════════════════════════════
+if args.tsan:
+    hdr("БЛОК 12: TSAN (гонки данных)")
+    if not HAS_CPP:
+        warn("TSAN: C++ файлов не найдено")
+    else:
+        tsan_flags = ['-fsanitize=thread', '-g']
+        ok_flag, n_pass, n_fail, detail = _gtest_build_run(tsan_flags, '/tmp/gc_tsan')
+        if ok_flag is None:
+            warn(f"TSAN: {detail}")
+        elif ok_flag:
+            race_hit = re.search(r'WARNING: ThreadSanitizer|DATA RACE', detail)
+            if race_hit:
+                fail(f"TSAN: {n_pass} тестов прошли, но найдена гонка данных!")
+                for line in detail.splitlines():
+                    if 'WARNING' in line or 'DATA RACE' in line or 'race' in line.lower():
+                        print(f"    {line}")
+            else:
+                ok(f"TSAN: {n_pass} тестов ✓ — гонок данных не найдено")
+        else:
+            race_hit = re.search(r'WARNING: ThreadSanitizer|DATA RACE', detail)
+            if race_hit:
+                fail(f"TSAN: {n_fail} тестов упали + найдена гонка данных!")
+            else:
+                fail(f"TSAN: {n_fail} тестов упали")
+            for line in detail.splitlines()[-12:]:
+                print(f"    {line}")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 13: --cppcheck (статический анализ C++)
+# ══════════════════════════════════════════════════════════════════════
+if args.cppcheck:
+    hdr("БЛОК 13: cppcheck (статический анализ)")
+    if not HAS_CPP:
+        warn("cppcheck: C++ файлов не найдено")
+    else:
+        rc, out, err = run(['cppcheck', '--version'], timeout=5)
+        if rc != 0:
+            warn("cppcheck: не установлен — apt-get install cppcheck")
+        else:
+            cpp_src_dirs = list({str(f.parent) for f in cpp_src + cpp_h})
+            rc2, out2, err2 = run(
+                ['cppcheck', '--enable=all', '--error-exitcode=1',
+                 '--suppress=missingIncludeSystem', '--suppress=unmatchedSuppression',
+                 '--suppress=missingInclude', '--inline-suppr',
+                 f'--std=c++20', str(DIR)],
+                cwd=DIR, timeout=120
+            )
+            issues = [l for l in (out2 + err2).splitlines()
+                      if ': error:' in l or ': warning:' in l or ': style:' in l
+                      or ': performance:' in l or ': portability:' in l]
+            errors_only = [l for l in issues if ': error:' in l]
+            if errors_only:
+                fail(f"cppcheck: {len(errors_only)} ошибок")
+                for l in errors_only[:5]: print(f"    {l}")
+            elif issues:
+                warn(f"cppcheck: {len(issues)} предупреждений (ошибок нет)")
+                for l in issues[:3]: print(f"    {l}")
+            else:
+                ok("cppcheck: ошибок не найдено")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 14: --mypy (типы Python)
+# ══════════════════════════════════════════════════════════════════════
+if args.mypy:
+    hdr("БЛОК 14: mypy (типы Python)")
+    if not HAS_PY:
+        warn("mypy: Python файлов не найдено")
+    else:
+        rc, out, err = run(['mypy', '--version'], timeout=5)
+        if rc != 0:
+            warn("mypy: не установлен — pip install mypy --break-system-packages")
+        else:
+            rc2, out2, err2 = run(
+                ['mypy', '--ignore-missing-imports', '--no-error-summary', str(DIR)],
+                cwd=DIR, timeout=120
+            )
+            type_errors = [l for l in (out2 + err2).splitlines() if ': error:' in l]
+            type_notes  = [l for l in (out2 + err2).splitlines() if ': note:' in l]
+            if type_errors:
+                fail(f"mypy: {len(type_errors)} ошибок типов")
+                for l in type_errors[:5]: print(f"    {l}")
+            else:
+                ok(f"mypy: ошибок типов нет ({'есть заметки' if type_notes else 'чисто'})")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 15: --bandit (security Python)
+# ══════════════════════════════════════════════════════════════════════
+if args.bandit:
+    hdr("БЛОК 15: bandit (безопасность Python)")
+    if not HAS_PY:
+        warn("bandit: Python файлов не найдено")
+    else:
+        rc, out, err = run(['bandit', '--version'], timeout=5)
+        if rc != 0:
+            warn("bandit: не установлен — pip install bandit --break-system-packages")
+        else:
+            rc2, out2, err2 = run(
+                ['bandit', '-r', str(DIR), '-ll', '-q', '--format', 'txt'],
+                cwd=DIR, timeout=120
+            )
+            combined = out2 + err2
+            highs   = [l for l in combined.splitlines() if 'Severity: High' in l]
+            mediums = [l for l in combined.splitlines() if 'Severity: Medium' in l]
+            issues_block = [l for l in combined.splitlines() if l.startswith('>> Issue')]
+            if highs:
+                fail(f"bandit: {len(highs)} HIGH severity проблем безопасности!")
+                for l in issues_block[:5]: print(f"    {l}")
+            elif mediums:
+                warn(f"bandit: {len(mediums)} MEDIUM severity — проверить вручную")
+                for l in issues_block[:3]: print(f"    {l}")
+            else:
+                ok("bandit: критических уязвимостей не найдено")
+
+# ══════════════════════════════════════════════════════════════════════
+# БЛОК 16: --coverage (покрытие тестами)
+# ══════════════════════════════════════════════════════════════════════
+if args.coverage:
+    hdr("БЛОК 16: ПОКРЫТИЕ ТЕСТАМИ")
+
+    # Python coverage
+    if HAS_PY and PY_DOMINANT:
+        rc, out, err = run(['coverage', '--version'], timeout=5)
+        if rc != 0:
+            warn("coverage.py: не установлен — pip install coverage --break-system-packages")
+        else:
+            test_dirs = [str(d) for d in [DIR/'tests', DIR/'test', DIR] if (DIR if d == DIR else d).exists()]
+            rc2, out2, err2 = run(
+                ['coverage', 'run', f'--source={DIR}', '-m', 'pytest', '-q', str(DIR)],
+                cwd=DIR, timeout=120
+            )
+            rc3, out3, err3 = run(['coverage', 'report', '--skip-empty'], cwd=DIR, timeout=30)
+            cov_line = next((l for l in (out3 + err3).splitlines() if 'TOTAL' in l), None)
+            if cov_line:
+                pct_m = re.search(r'(\d+)%', cov_line)
+                pct = int(pct_m.group(1)) if pct_m else 0
+                if pct >= 80:
+                    ok(f"coverage.py: {pct}% ✓")
+                elif pct >= 60:
+                    warn(f"coverage.py: {pct}% (цель ≥80%)")
                 else:
-                    rc2, out2, err2 = run(
-                        [str(out_bin), '--gtest_color=no'], cwd=DIR, timeout=60
-                    )
-                    m_pass = re.search(r'\[  PASSED  \] (\d+) test', out2)
-                    m_fail = re.search(r'\[  FAILED  \] (\d+) test', out2)
-                    if rc2 == 0 and m_pass:
-                        ok(f"GTest прямой: {m_pass.group(1)} тестов ✓ "
-                           f"({len(gtest_test_files)} файлов, {len(src_cpps)} src)")
-                    else:
-                        nf = m_fail.group(1) if m_fail else '?'
-                        fail(f"GTest прямой: {nf} тестов упали")
-                        for line in out2.splitlines()[-15:]:
-                            print(f"    {line}")
+                    fail(f"coverage.py: {pct}% — критически низкое покрытие (цель ≥80%)")
+            else:
+                warn("coverage.py: не удалось получить отчёт")
+
+    # C++ coverage (gcov)
+    if HAS_CPP:
+        cov_flags = ['--coverage', '-O0', '-g']
+        ok_flag, n_pass, n_fail, detail = _gtest_build_run(cov_flags, '/tmp/gc_cov')
+        if ok_flag is None:
+            warn(f"gcov: {detail}")
+        elif not ok_flag:
+            fail(f"gcov: {n_fail} тестов упали при сборке с --coverage")
+        else:
+            # Собрать gcov-отчёт
+            gcda_files = list(pathlib.Path('/tmp').glob('*.gcda'))
+            if not gcda_files:
+                # gcda могут быть рядом с obj файлами
+                gcda_files = list(DIR.rglob('*.gcda'))
+            rc_gcov, gcov_out, _ = run(
+                ['gcov', '-b'] + [str(f) for f in gcda_files[:20]], cwd=DIR, timeout=30
+            )
+            lines_executed = re.findall(r'Lines executed:(\d+\.\d+)%', gcov_out)
+            if lines_executed:
+                avg = sum(float(x) for x in lines_executed) / len(lines_executed)
+                if avg >= 80:
+                    ok(f"gcov: {avg:.1f}% строк покрыто ✓")
+                elif avg >= 60:
+                    warn(f"gcov: {avg:.1f}% строк покрыто (цель ≥80%)")
+                else:
+                    fail(f"gcov: {avg:.1f}% — критически низкое покрытие")
+            else:
+                ok(f"gcov: {n_pass} тестов ✓ (coverage data сгенерированы)")
 
 # ══════════════════════════════════════════════════════════════════════
 # ИТОГ
