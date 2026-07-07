@@ -1014,6 +1014,71 @@ if args.coverage:
                 ok(f"gcov: {n_pass} тестов ✓ (coverage data сгенерированы)")
 
 # ══════════════════════════════════════════════════════════════════════
+# БЛОК 17: CI статус (GitHub Actions — TSAN и др.)
+# ══════════════════════════════════════════════════════════════════════
+hdr("БЛОК 17: CI — GitHub Actions статус")
+rc_gh, gh_out, _ = run(['gh', '--version'], timeout=5)
+if rc_gh != 0:
+    warn("CI: gh CLI не установлен — apt-get install gh")
+else:
+    # Найти remote origin
+    rc_r, remote_out, _ = run(['git', 'remote', 'get-url', 'origin'], cwd=DIR, timeout=5)
+    if rc_r != 0 or not remote_out.strip():
+        warn("CI: git remote origin не найден")
+    else:
+        remote = remote_out.strip()
+        # Извлечь owner/repo из SSH или HTTPS URL
+        import re as _re
+        m = _re.search(r'[:/]([\w.-]+/[\w.-]+?)(\.git)?$', remote)
+        if not m:
+            warn(f"CI: не удалось распарсить remote: {remote}")
+        else:
+            repo = m.group(1)
+            rc2, runs_out, _ = run(
+                ['gh', 'run', 'list', f'--repo={repo}',
+                 '--limit=5', '--json=conclusion,status,name,displayTitle'],
+                timeout=20
+            )
+            if rc2 != 0:
+                warn(f"CI: gh run list не удался (нет auth? gh auth login)")
+            else:
+                import json as _json
+                try:
+                    runs = _json.loads(runs_out)
+                    if not runs:
+                        warn("CI: нет завершённых runs")
+                    else:
+                        last = runs[0]
+                        conclusion = last.get('conclusion', '')
+                        status = last.get('status', '')
+                        title = last.get('displayTitle', '')[:50]
+                        if status != 'completed':
+                            warn(f"CI: последний run ещё выполняется ({status}): {title}")
+                        elif conclusion == 'success':
+                            ok(f"CI: все jobs ✓ — {title}")
+                        elif conclusion == 'failure':
+                            fail(f"CI: FAILED — {title}")
+                            # Показать упавшие jobs
+                            rc3, jobs_out, _ = run(
+                                ['gh', 'run', 'view', '--repo', repo,
+                                 '--json', 'jobs'],
+                                timeout=15
+                            )
+                            if rc3 == 0:
+                                try:
+                                    jobs = _json.loads(jobs_out).get('jobs', [])
+                                    for j in jobs:
+                                        if j.get('conclusion') == 'failure':
+                                            print(f"    ✗ {j['name']}")
+                                except Exception:
+                                    pass
+                        else:
+                            warn(f"CI: {conclusion} — {title}")
+                except Exception as e:
+                    warn(f"CI: ошибка парсинга: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════
 # ИТОГ
 # ══════════════════════════════════════════════════════════════════════
 print(f"\n{B}{'═'*62}{NC}")
