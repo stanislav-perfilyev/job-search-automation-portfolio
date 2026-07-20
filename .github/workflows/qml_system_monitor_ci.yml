@@ -1,0 +1,39 @@
+name: QML System Monitor CI
+
+on:
+  push:
+    paths:
+      - 'portfolio/qml_system_monitor/**'
+  pull_request:
+    paths:
+      - 'portfolio/qml_system_monitor/**'
+
+jobs:
+  build:
+    name: Build & Test (Ubuntu / Qt 6)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.6.*'
+
+      - name: Configure CMake
+        working-directory: portfolio/qml_system_monitor
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: portfolio/qml_system_monitor
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run tests (headless)
+        working-directory: portfolio/qml_system_monitor
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build --output-on-failure

@@ -1,0 +1,37 @@
+name: D-Bus Service CI
+
+on:
+  push:
+    paths:
+      - 'portfolio/dbus_service/**'
+  pull_request:
+    paths:
+      - 'portfolio/dbus_service/**'
+
+jobs:
+  build:
+    name: Build & Test (Ubuntu / Qt 6)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.6.*'
+
+      - name: Configure CMake
+        working-directory: portfolio/dbus_service
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: portfolio/dbus_service
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run tests
+        working-directory: portfolio/dbus_service
+        run: ctest --test-dir build --output-on-failure
