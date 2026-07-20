@@ -37,7 +37,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     applyDarkTheme();
 
-    m_model = new VacancySqlModel(this);
+    m_model = new VacancySqlModel(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
 
     setupUi();
     createStatusBar();
@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget* parent)
             updateKpis();
     }
 
-    m_autoRefresh = new QTimer(this);
+    m_autoRefresh = new QTimer(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_autoRefresh->setInterval(kAutoRefreshIntervalMs);
     connect(m_autoRefresh, &QTimer::timeout, this, &MainWindow::onRefresh);
     m_autoRefresh->start();
@@ -95,29 +95,29 @@ QString MainWindow::projectRoot() const
 
 void MainWindow::setupUi()
 {
-    m_kpiTotal      = new KpiWidget("Всего откликов", "#4A9EFF", this);
-    m_kpiActive     = new KpiWidget("Активных",       "#2ECC71", this);
-    m_kpiInterview  = new KpiWidget("Интервью",       "#F39C12", this);
-    m_kpiConversion = new KpiWidget("Конверсия %",    "#9B59B6", this);
+    m_kpiTotal      = new KpiWidget("Всего откликов", "#4A9EFF", this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
+    m_kpiActive     = new KpiWidget("Активных",       "#2ECC71", this);  // NOLINT(cppcoreguidelines-owning-memory)
+    m_kpiInterview  = new KpiWidget("Интервью",       "#F39C12", this);  // NOLINT(cppcoreguidelines-owning-memory)
+    m_kpiConversion = new KpiWidget("Конверсия %",    "#9B59B6", this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* kpiRow = new QHBoxLayout;
+    auto* kpiRow = new QHBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout below
     for (auto* w : {m_kpiTotal, m_kpiActive, m_kpiInterview, m_kpiConversion})
         kpiRow->addWidget(w);
 
-    m_vacancyView = new VacancyView(m_model, this);
-    m_statsView   = new StatisticsView(m_model, this);
+    m_vacancyView = new VacancyView(m_model, this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
+    m_statsView   = new StatisticsView(m_model, this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    m_tabs = new QTabWidget(this);
+    m_tabs = new QTabWidget(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_tabs->addTab(m_vacancyView, "📋 Вакансии");
     m_tabs->addTab(m_statsView,  "📊 Статистика");
 
-    auto* root = new QVBoxLayout;
+    auto* root = new QVBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by setLayout below
     root->addLayout(kpiRow);
     root->addWidget(m_tabs);
     root->setSpacing(8);
     root->setContentsMargins(8, 8, 8, 8);
 
-    auto* central = new QWidget(this);
+    auto* central = new QWidget(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     central->setLayout(root);
     setCentralWidget(central);
 
@@ -125,18 +125,18 @@ void MainWindow::setupUi()
     auto* fileMenu = menuBar()->addMenu("&Файл");
     fileMenu->addAction("⚙ Настройки", this, &MainWindow::onSettings);
     fileMenu->addSeparator();
-    fileMenu->addAction("📄 Экспорт в CSV", this, &MainWindow::onExportCsv,
-                        QKeySequence("Ctrl+E"));
+    fileMenu->addAction("📄 Экспорт в CSV", QKeySequence("Ctrl+E"),
+                        this, &MainWindow::onExportCsv);
     fileMenu->addSeparator();
-    fileMenu->addAction("Выход", qApp, &QApplication::quit, QKeySequence::Quit);
+    fileMenu->addAction("Выход", QKeySequence::Quit, qApp, &QApplication::quit);
 
     auto* viewMenu = menuBar()->addMenu("&Вид");
-    viewMenu->addAction("⟳ Обновить", this, &MainWindow::onRefresh,
-                        QKeySequence::Refresh);
+    viewMenu->addAction("⟳ Обновить", QKeySequence::Refresh,
+                        this, &MainWindow::onRefresh);
 
     auto* toolsMenu = menuBar()->addMenu("&Инструменты");
-    toolsMenu->addAction("🐍 Запустить Python скрипт…",
-                         this, &MainWindow::onRunScript, QKeySequence("Ctrl+R"));
+    toolsMenu->addAction("🐍 Запустить Python скрипт…", QKeySequence("Ctrl+R"),
+                         this, &MainWindow::onRunScript);
 
     auto* helpMenu = menuBar()->addMenu("&Справка");
     helpMenu->addAction("🔍 Диагностика", this, &MainWindow::onDiagnostics);
@@ -149,7 +149,7 @@ void MainWindow::setupUi()
 
 void MainWindow::createStatusBar()
 {
-    m_statusLabel = new QLabel("Готово", this);
+    m_statusLabel = new QLabel("Готово", this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     statusBar()->addPermanentWidget(m_statusLabel);
 }
 

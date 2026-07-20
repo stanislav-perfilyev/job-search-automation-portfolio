@@ -17,26 +17,26 @@ VacancyDetailDialog::VacancyDetailDialog(VacancySqlModel* model, int row, QWidge
     setWindowTitle("Детали вакансии");
     resize(540, 400);
 
-    m_titleLabel = new QLabel(this);
+    m_titleLabel = new QLabel(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_titleLabel->setWordWrap(true);
     m_titleLabel->setStyleSheet("font-size:16px;font-weight:bold;");
 
-    m_metaLabel = new QLabel(this);
+    m_metaLabel = new QLabel(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_metaLabel->setWordWrap(true);
 
-    m_notesEdit = new QTextEdit(this);
+    m_notesEdit = new QTextEdit(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_notesEdit->setReadOnly(true);
 
-    m_urlBtn = new QPushButton("Открыть вакансию ↗", this);
+    m_urlBtn = new QPushButton("Открыть вакансию ↗", this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* btnBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto* btnBox = new QDialogButtonBox(QDialogButtonBox::Close, this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* root = new QVBoxLayout(this);
+    auto* root = new QVBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     root->addWidget(m_titleLabel);
     root->addWidget(m_metaLabel);
-    root->addWidget(new QLabel("Заметки:", this));
+    root->addWidget(new QLabel("Заметки:", this));  // NOLINT(cppcoreguidelines-owning-memory)
     root->addWidget(m_notesEdit);
-    auto* bottomRow = new QHBoxLayout;
+    auto* bottomRow = new QHBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout below
     bottomRow->addWidget(m_urlBtn);
     bottomRow->addStretch();
     bottomRow->addWidget(btnBox);

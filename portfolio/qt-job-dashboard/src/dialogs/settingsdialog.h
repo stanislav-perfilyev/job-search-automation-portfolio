@@ -4,6 +4,8 @@
 class QLineEdit;
 class QSpinBox;
 
+/// Modal dialog for editing and persisting the PostgreSQL connection
+/// settings used by the dashboard (stored via QSettings("JobDashboard","db")).
 class SettingsDialog final : public QDialog {
     Q_OBJECT
 public:
@@ -13,7 +15,7 @@ public:
         QString host, database, user, password;
         int port{5432};
     };
-    DbConfig config() const;
+    [[nodiscard]] DbConfig config() const;
     void     setConfig(const DbConfig& cfg);
 
 private:

@@ -13,32 +13,32 @@
 ProcessRunner::ProcessRunner(QWidget* parent)
     : QWidget(parent)
 {
-    m_proc = new QProcess(this);
+    m_proc = new QProcess(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_proc->setProcessChannelMode(QProcess::SeparateChannels);
 
-    m_console = new QTextEdit(this);
+    m_console = new QTextEdit(this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_console->setReadOnly(true);
     m_console->setFont(QFont("Courier New", 10));
     m_console->document()->setMaximumBlockCount(kMaxConsoleBlocks);
     m_console->setStyleSheet(
         "background:#0D0D0D; color:#C0C0C0; border:1px solid #2A2A5A;");
 
-    m_killBtn = new QPushButton("✕ Остановить", this);
+    m_killBtn = new QPushButton("✕ Остановить", this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_killBtn->setEnabled(false);
     m_killBtn->setStyleSheet("background:#5C1A1A; color:#E0E0E0;");
 
-    m_statusLabel = new QLabel("Готово", this);
+    m_statusLabel = new QLabel("Готово", this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_statusLabel->setStyleSheet("color:#8888AA; font-size:11px;");
 
-    m_timeoutTimer = new QTimer(this);
+    m_timeoutTimer = new QTimer(this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_timeoutTimer->setSingleShot(true);
 
-    auto* bar = new QHBoxLayout;
+    auto* bar = new QHBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout below
     bar->addWidget(m_statusLabel);
     bar->addStretch();
     bar->addWidget(m_killBtn);
 
-    auto* root = new QVBoxLayout(this);
+    auto* root = new QVBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     root->addWidget(m_console);
     root->addLayout(bar);
     root->setContentsMargins(0, 0, 0, 0);

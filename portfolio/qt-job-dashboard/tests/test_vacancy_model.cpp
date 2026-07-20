@@ -80,13 +80,13 @@ void TestVacancyModel::initTestCase()
     QVERIFY2(created, qPrintable(q.lastError().text()));
     seedDb();
 
-    m_model = new VacancySqlModel;
+    m_model = new VacancySqlModel;  // NOLINT(cppcoreguidelines-owning-memory) — no Qt parent by design; paired delete in cleanupTestCase()
     QVERIFY(m_model->refresh());
 }
 
 void TestVacancyModel::cleanupTestCase()
 {
-    delete m_model;
+    delete m_model;  // NOLINT(cppcoreguidelines-owning-memory) — pairs with the explicit `new` in initTestCase()
     m_db.close();
     QSqlDatabase::removeDatabase(VacancySqlModel::kConnectionName);
 }

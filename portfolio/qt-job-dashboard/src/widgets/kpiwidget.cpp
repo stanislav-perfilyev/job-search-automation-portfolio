@@ -8,10 +8,10 @@ KpiWidget::KpiWidget(const QString& label, const QString& accent, QWidget* paren
     setFrameShape(QFrame::StyledPanel);
     setObjectName("KpiCard");
 
-    auto* root     = new QVBoxLayout(this);
-    auto* lbl      = new QLabel(label, this);
-    m_valueLabel   = new QLabel("—", this);
-    m_subtitleLabel = new QLabel(this);
+    auto* root     = new QVBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
+    auto* lbl      = new QLabel(label, this);  // NOLINT(cppcoreguidelines-owning-memory)
+    m_valueLabel   = new QLabel("—", this);  // NOLINT(cppcoreguidelines-owning-memory)
+    m_subtitleLabel = new QLabel(this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_subtitleLabel->setObjectName("KpiSubtitle");
     m_subtitleLabel->hide();
 

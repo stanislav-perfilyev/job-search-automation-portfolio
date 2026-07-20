@@ -22,14 +22,14 @@ static QStandardItemModel* makeModel(
     const QVector<QStringList>& rows,
     QObject* parent = nullptr)
 {
-    auto* m = new QStandardItemModel(parent);
+    auto* m = new QStandardItemModel(parent);  // NOLINT(cppcoreguidelines-owning-memory) — every call site passes `this` (the test fixture) as parent
     m->setColumnCount(headers.size());
     for (int c = 0; c < headers.size(); ++c)
         m->setHeaderData(c, Qt::Horizontal, headers[c]);
     for (const auto& row : rows) {
         QList<QStandardItem*> items;
         for (const auto& cell : row)
-            items << new QStandardItem(cell);
+            items << new QStandardItem(cell);  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by m->appendRow() below
         m->appendRow(items);
     }
     return m;

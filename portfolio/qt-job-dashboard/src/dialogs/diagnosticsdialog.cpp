@@ -11,26 +11,34 @@
 #include <QDateTime>
 #include <QStorageInfo>
 
+namespace {
+constexpr int kDialogWidth       = 600;
+constexpr int kDialogHeight      = 420;
+constexpr int kMonospaceFontSize = 10;
+constexpr qint64 kBytesPerMiB    = 1024 * 1024;
+constexpr qint64 kMinFreeSpaceMb = 100;
+}  // namespace
+
 DiagnosticsDialog::DiagnosticsDialog(IVacancyModel* model, QWidget* parent)
     : QDialog(parent), m_model(model)
 {
     setWindowTitle("Диагностика системы");
-    setMinimumSize(600, 420);
+    setMinimumSize(kDialogWidth, kDialogHeight);
 
-    m_output     = new QTextEdit(this);
+    m_output = new QTextEdit(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     m_output->setReadOnly(true);
-    m_output->setFont(QFont("Courier New", 10));
+    m_output->setFont(QFont("Courier New", kMonospaceFontSize));
     m_output->setStyleSheet("background:#0D0D0D; color:#C0C0C0;");
 
-    m_refreshBtn = new QPushButton("⟳ Повторить", this);
-    auto* closeBtn = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    m_refreshBtn = new QPushButton("⟳ Повторить", this);  // NOLINT(cppcoreguidelines-owning-memory)
+    auto* closeBtn = new QDialogButtonBox(QDialogButtonBox::Close, this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* bar = new QHBoxLayout;
+    auto* bar = new QHBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout below
     bar->addWidget(m_refreshBtn);
     bar->addStretch();
     bar->addWidget(closeBtn);
 
-    auto* root = new QVBoxLayout(this);
+    auto* root = new QVBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     root->addWidget(m_output);
     root->addLayout(bar);
 
@@ -48,72 +56,77 @@ void DiagnosticsDialog::runDiagnostics()
 
 QVector<DiagnosticsDialog::Check> DiagnosticsDialog::collectChecks() const
 {
-    QVector<Check> checks;
+    return {
+        checkDriverAvailable(),
+        checkConnectionOpen(),
+        checkDbPing(),
+        checkModelLoaded(),
+        checkModelHealth(),
+        checkDiskSpace(),
+        checkQtVersion(),
+    };
+}
 
-    // 1. DB driver available
-    {
-        const bool ok = QSqlDatabase::isDriverAvailable("QPSQL");
-        checks.push_back({"Qt QPSQL driver", ok,
-            ok ? "доступен" : "QPSQL драйвер не установлен (libqt6sql-psql)"});
+DiagnosticsDialog::Check DiagnosticsDialog::checkDriverAvailable() const
+{
+    const bool ok = QSqlDatabase::isDriverAvailable("QPSQL");
+    return {"Qt QPSQL driver", ok,
+        ok ? "доступен" : "QPSQL драйвер не установлен (libqt6sql-psql)"};
+}
+
+DiagnosticsDialog::Check DiagnosticsDialog::checkConnectionOpen() const
+{
+    const QSqlDatabase db = QSqlDatabase::database("dashboard_main");
+    const bool ok = db.isOpen();
+    return {"DB connection open", ok,
+        ok ? db.hostName() + "/" + db.databaseName()
+           : "Нет подключения — откройте Файл → Настройки"};
+}
+
+DiagnosticsDialog::Check DiagnosticsDialog::checkDbPing() const
+{
+    const QSqlDatabase db = QSqlDatabase::database("dashboard_main");
+    bool ok = false;
+    QString detail;
+    if (db.isOpen()) {
+        QSqlQuery q(db);
+        ok = q.exec("SELECT NOW()::text");
+        detail = ok ? q.first() ? q.value(0).toString() : "OK"
+                    : q.lastError().text();
+    } else {
+        detail = "пропущено (нет соединения)";
     }
+    return {"DB ping (SELECT NOW())", ok, detail};
+}
 
-    // 2. DB connection open
-    {
-        const QSqlDatabase db = QSqlDatabase::database("dashboard_main");
-        const bool ok = db.isOpen();
-        checks.push_back({"DB connection open", ok,
-            ok ? db.hostName() + "/" + db.databaseName()
-               : "Нет подключения — откройте Файл → Настройки"});
-    }
+DiagnosticsDialog::Check DiagnosticsDialog::checkModelLoaded() const
+{
+    const int n = m_model->totalCount();
+    const bool ok = n > 0;
+    return {"Model data loaded", ok,
+        ok ? QString("%1 вакансий в памяти").arg(n)
+           : "0 вакансий — не загружены или БД пуста"};
+}
 
-    // 3. DB ping
-    {
-        const QSqlDatabase db = QSqlDatabase::database("dashboard_main");
-        bool ok = false; QString detail;
-        if (db.isOpen()) {
-            QSqlQuery q(db);
-            ok = q.exec("SELECT NOW()::text");
-            detail = ok ? q.first() ? q.value(0).toString() : "OK"
-                        : q.lastError().text();
-        } else {
-            detail = "пропущено (нет соединения)";
-        }
-        checks.push_back({"DB ping (SELECT NOW())", ok, detail});
-    }
+DiagnosticsDialog::Check DiagnosticsDialog::checkModelHealth() const
+{
+    const QString hc = m_model->healthCheck();
+    const bool ok = hc.isEmpty();
+    return {"Model healthCheck()", ok, ok ? "OK" : hc};
+}
 
-    // 4. Model loaded
-    {
-        const int n = m_model->totalCount();
-        const bool ok = n > 0;
-        checks.push_back({"Model data loaded", ok,
-            ok ? QString("%1 вакансий в памяти").arg(n)
-               : "0 вакансий — не загружены или БД пуста"});
-    }
+DiagnosticsDialog::Check DiagnosticsDialog::checkDiskSpace() const
+{
+    const QStorageInfo storage = QStorageInfo::root();
+    const qint64 freeMb = storage.bytesFree() / kBytesPerMiB;
+    const bool ok = freeMb > kMinFreeSpaceMb;
+    return {"Disk space (root)", ok,
+        QString("%1 MB свободно%2").arg(freeMb).arg(ok ? "" : " ⚠ мало места")};
+}
 
-    // 5. Model healthCheck
-    {
-        const QString hc = m_model->healthCheck();
-        const bool ok = hc.isEmpty();
-        checks.push_back({"Model healthCheck()", ok,
-            ok ? "OK" : hc});
-    }
-
-    // 6. Free disk space
-    {
-        const QStorageInfo storage = QStorageInfo::root();
-        const qint64 freeMb = storage.bytesFree() / 1024 / 1024;
-        const bool ok = freeMb > 100;
-        checks.push_back({"Disk space (root)", ok,
-            QString("%1 MB свободно%2").arg(freeMb).arg(ok ? "" : " ⚠ мало места")});
-    }
-
-    // 7. Qt version
-    {
-        checks.push_back({"Qt version", true,
-            QString(QT_VERSION_STR) + " (min: 6.0)"});
-    }
-
-    return checks;
+DiagnosticsDialog::Check DiagnosticsDialog::checkQtVersion() const
+{
+    return {"Qt version", true, QString(QT_VERSION_STR) + " (min: 6.0)"};
 }
 
 void DiagnosticsDialog::renderReport(const QVector<Check>& checks)

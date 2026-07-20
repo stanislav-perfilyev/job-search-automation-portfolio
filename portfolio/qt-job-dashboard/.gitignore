@@ -1,0 +1,9 @@
+build/
+build_tmp/
+*.exe
+*.obj
+*.dll
+*.dll.a
+CMakeFiles/
+CMakeCache.txt
+*.user

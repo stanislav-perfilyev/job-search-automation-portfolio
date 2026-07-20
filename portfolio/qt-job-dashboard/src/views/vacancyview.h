@@ -7,6 +7,7 @@ class QTableView;
 class QLineEdit;
 class QComboBox;
 class QPushButton;
+class QHBoxLayout;
 
 // Vacancy table + filter toolbar.
 class VacancyView final : public QWidget {
@@ -24,6 +25,11 @@ private slots:
     void onDoubleClick(const QModelIndex& proxyIdx);
 
 private:
+    /// Builds the search/filter/refresh toolbar and wires its signals.
+    [[nodiscard]] QHBoxLayout* setupToolbar();
+    /// Builds the vacancy table view, its columns and delegate.
+    void setupTable();
+
     VacancySqlModel*    m_srcModel;
     VacancyFilterModel* m_filterModel;
     QTableView*         m_table;

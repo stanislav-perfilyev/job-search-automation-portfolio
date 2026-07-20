@@ -16,7 +16,7 @@ public:
 
     // ── IVacancyModel ─────────────────────────────────────────
     [[nodiscard]] bool    refresh()                          override;
-    [[nodiscard]] int     totalCount()                 const override;
+    [[nodiscard]] int     totalCount()                 const noexcept override;
     [[nodiscard]] int     countByStatus(const QString& s)   const override;
     [[nodiscard]] QString healthCheck()                const override;
 

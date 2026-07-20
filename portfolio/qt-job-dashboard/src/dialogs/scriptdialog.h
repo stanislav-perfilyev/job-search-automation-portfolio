@@ -8,6 +8,9 @@ class QComboBox;
 class QLineEdit;
 class QPushButton;
 
+/// One runnable helper script: display label, interpreter, default args and
+/// working directory. The last entry in ScriptDialog's preset list is a
+/// free-form "custom command" slot (see ScriptDialog::isCustom()).
 struct ScriptDef {
     QString     label;
     QString     program;
@@ -15,6 +18,9 @@ struct ScriptDef {
     QString     workDir;
 };
 
+/// Dialog that lists the project's helper Python scripts (sync, reports,
+/// KPI, cover letters, …), runs the selected one via ProcessRunner and
+/// streams its output live.
 class ScriptDialog final : public QDialog {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(ScriptDialog)

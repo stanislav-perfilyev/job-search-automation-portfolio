@@ -10,40 +10,47 @@
 #include <QDialogButtonBox>
 #include <QMessageBox>
 
+namespace {
+constexpr int kDialogMinWidth  = 700;
+constexpr int kDialogMinHeight = 480;
+constexpr int kFormStretch     = 1;
+constexpr int kOutputStretch   = 1;
+}  // namespace
+
 ScriptDialog::ScriptDialog(const QString& projectRoot, QWidget* parent)
     : QDialog(parent)
 {
     setWindowTitle("Запустить скрипт");
-    setMinimumSize(700, 480);
+    setMinimumSize(kDialogMinWidth, kDialogMinHeight);
 
     buildScriptList(projectRoot);
 
-    m_scriptCombo = new QComboBox(this);
+    m_scriptCombo = new QComboBox(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     for (const auto& s : std::as_const(m_scripts))
         m_scriptCombo->addItem(s.label);
 
-    m_argsEdit = new QLineEdit(this);
+    m_argsEdit = new QLineEdit(this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_argsEdit->setPlaceholderText("Дополнительные аргументы (необязательно)");
 
-    m_runBtn = new QPushButton("▶ Запустить", this);
+    m_runBtn = new QPushButton("▶ Запустить", this);  // NOLINT(cppcoreguidelines-owning-memory)
     m_runBtn->setStyleSheet("background:#0F5132; color:#E0E0E0; padding:5px 18px;");
 
-    auto* closeBtn = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto* closeBtn = new QDialogButtonBox(QDialogButtonBox::Close, this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    m_runner = new ProcessRunner(this);
+    m_runner = new ProcessRunner(this);  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* form = new QFormLayout;
+    auto* form = new QFormLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout
     form->addRow("Скрипт:", m_scriptCombo);
     form->addRow("Аргументы:", m_argsEdit);
 
-    auto* topRow = new QHBoxLayout;
-    topRow->addLayout(form, 1);
+    auto* topRow = new QHBoxLayout;  // NOLINT(cppcoreguidelines-owning-memory) — reparented by addLayout
+    topRow->addLayout(form, kFormStretch);
     topRow->addWidget(m_runBtn, 0, Qt::AlignBottom);
 
-    auto* root = new QVBoxLayout(this);
+    auto* root = new QVBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     root->addLayout(topRow);
-    root->addWidget(new QLabel("Вывод:", this));
-    root->addWidget(m_runner, 1);
+    root->addWidget(new QLabel("Вывод:", this));  // NOLINT(cppcoreguidelines-owning-memory)
+    root->addWidget(m_runner, kOutputStretch);
     root->addWidget(closeBtn);
 
     connect(m_runBtn,      &QPushButton::clicked,

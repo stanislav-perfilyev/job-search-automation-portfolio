@@ -16,7 +16,7 @@
 StatisticsView::StatisticsView(VacancySqlModel* model, QWidget* parent)
     : QWidget(parent), m_model(model)
 {
-    m_layout = new QHBoxLayout(this);
+    m_layout = new QHBoxLayout(this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     rebuildCharts();
 }
 
@@ -27,10 +27,12 @@ void StatisticsView::refresh()
 
 void StatisticsView::rebuildCharts()
 {
-    // Remove and delete old charts properly (avoid dangling layout refs)
+    // Remove and delete old charts properly (avoid dangling layout refs).
+    // takeAt() transfers ownership of the QLayoutItem to us — the standard
+    // Qt idiom for clearing a layout requires this explicit manual delete.
     while (QLayoutItem* item = m_layout->takeAt(0)) {
-        delete item->widget();
-        delete item;
+        delete item->widget();  // NOLINT(cppcoreguidelines-owning-memory)
+        delete item;            // NOLINT(cppcoreguidelines-owning-memory)
     }
 
     m_pieView  = buildStatusPie();
@@ -51,7 +53,7 @@ static QSqlQuery execChart(const QString& sql)
 
 QChartView* StatisticsView::buildStatusPie()
 {
-    auto* series = new QPieSeries;
+    auto* series = new QPieSeries;  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by chart->addSeries() below
     auto q = execChart("SELECT status, COUNT(*) FROM vacancies GROUP BY status ORDER BY 2 DESC");
     while (q.next())
         series->append(q.value(0).toString(), q.value(1).toReal());
@@ -59,20 +61,20 @@ QChartView* StatisticsView::buildStatusPie()
     for (auto* slice : series->slices())
         slice->setLabel(QString("%1\n%2").arg(slice->label()).arg((int)slice->value()));
 
-    auto* chart = new QChart;
+    auto* chart = new QChart;  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by QChartView below
     chart->addSeries(series);
     chart->setTitle("Статусы");
     chart->setTheme(QChart::ChartThemeDark);
     chart->legend()->setAlignment(Qt::AlignRight);
 
-    auto* view = new QChartView(chart, this);
+    auto* view = new QChartView(chart, this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     view->setRenderHint(QPainter::Antialiasing);
     return view;
 }
 
 QChartView* StatisticsView::buildMonthlyBar()
 {
-    auto* set = new QBarSet("Отклики");
+    auto* set = new QBarSet("Отклики");  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by series->append() below
     QStringList categories;
 
     auto q = execChart(
@@ -88,12 +90,12 @@ QChartView* StatisticsView::buildMonthlyBar()
         *set << cnt;
     }
 
-    auto* series = new QBarSeries;
+    auto* series = new QBarSeries;  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by chart->addSeries() below
     series->append(set);
-    auto* axisX = new QBarCategoryAxis; axisX->append(categories);
-    auto* axisY = new QValueAxis;       axisY->setLabelFormat("%d");
+    auto* axisX = new QBarCategoryAxis; axisX->append(categories);  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by chart->addAxis() below
+    auto* axisY = new QValueAxis;       axisY->setLabelFormat("%d");  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* chart = new QChart;
+    auto* chart = new QChart;  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by QChartView below
     chart->addSeries(series);
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
@@ -103,7 +105,7 @@ QChartView* StatisticsView::buildMonthlyBar()
     chart->setTheme(QChart::ChartThemeDark);
     chart->legend()->hide();
 
-    auto* view = new QChartView(chart, this);
+    auto* view = new QChartView(chart, this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     view->setRenderHint(QPainter::Antialiasing);
     return view;
 }
@@ -118,18 +120,18 @@ QChartView* StatisticsView::buildSalaryHist()
         buckets[b]++;
     }
 
-    auto* set = new QBarSet("Вакансии");
+    auto* set = new QBarSet("Вакансии");  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by series->append() below
     QStringList cats;
     for (auto it = buckets.cbegin(); it != buckets.cend(); ++it) {
         cats << QString("%1k").arg(it.key()/1000);
         *set << it.value();
     }
 
-    auto* series = new QBarSeries; series->append(set);
-    auto* axisX  = new QBarCategoryAxis; axisX->append(cats);
-    auto* axisY  = new QValueAxis;
+    auto* series = new QBarSeries; series->append(set);  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by chart->addSeries() below
+    auto* axisX  = new QBarCategoryAxis; axisX->append(cats);  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by chart->addAxis() below
+    auto* axisY  = new QValueAxis;  // NOLINT(cppcoreguidelines-owning-memory)
 
-    auto* chart = new QChart;
+    auto* chart = new QChart;  // NOLINT(cppcoreguidelines-owning-memory) — ownership taken by QChartView below
     chart->addSeries(series);
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
@@ -139,7 +141,7 @@ QChartView* StatisticsView::buildSalaryHist()
     chart->setTheme(QChart::ChartThemeDark);
     chart->legend()->hide();
 
-    auto* view = new QChartView(chart, this);
+    auto* view = new QChartView(chart, this);  // NOLINT(cppcoreguidelines-owning-memory) — Qt-parented
     view->setRenderHint(QPainter::Antialiasing);
     return view;
 }
