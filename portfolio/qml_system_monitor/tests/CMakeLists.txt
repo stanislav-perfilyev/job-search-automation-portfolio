@@ -1,17 +1,7 @@
-cmake_minimum_required(VERSION 3.16)
-project(QmlSystemMonitorTests CXX)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_AUTOMOC ON)
-
-find_package(Qt6 COMPONENTS Core Test QUIET)
-if(NOT Qt6_FOUND)
-    find_package(Qt5 REQUIRED COMPONENTS Core Test)
-    set(QT_VERSION_MAJOR 5)
-else()
-    set(QT_VERSION_MAJOR 6)
-endif()
-
-enable_testing()
+# Included via add_subdirectory() from the top-level CMakeLists.txt —
+# inherits CMAKE_CXX_STANDARD and CMAKE_AUTOMOC. Qt6::Test isn't pulled in
+# by the qt_add_executable() Quick/Qml setup above, so it's found here.
+find_package(Qt6 REQUIRED COMPONENTS Core Test)
 
 add_executable(test_system_stats
     test_system_stats.cpp
@@ -19,9 +9,10 @@ add_executable(test_system_stats
 )
 target_include_directories(test_system_stats PRIVATE ../src)
 target_link_libraries(test_system_stats PRIVATE
-    Qt${QT_VERSION_MAJOR}::Core
-    Qt${QT_VERSION_MAJOR}::Test
+    Qt6::Core
+    Qt6::Test
 )
+target_compile_options(test_system_stats PRIVATE ${WARNING_FLAGS})
 if(WIN32)
     target_link_libraries(test_system_stats PRIVATE psapi)
 endif()

@@ -8,11 +8,22 @@
 #  include <psapi.h>
 #endif
 
+namespace {
+constexpr int    kRefreshIntervalMs = 1000;
+constexpr qint64 kKiBPerMiB         = 1024;
+constexpr qint64 kBytesPerMiB       = 1024 * 1024;
+constexpr int    kPercentScale      = 100;
+constexpr int    kSecondsPerHour    = 3600;
+constexpr int    kSecondsPerMinute  = 60;
+constexpr qint64 kStubTotalMb       = 8192;
+constexpr qint64 kStubUsedMb        = 4096;
+}  // namespace
+
 SystemStats::SystemStats(QObject* parent)
     : QObject(parent)
 {
     connect(&m_timer, &QTimer::timeout, this, &SystemStats::refresh);
-    m_timer.start(1000);
+    m_timer.start(kRefreshIntervalMs);
     refresh(); // populate immediately on creation
 }
 
@@ -49,24 +60,24 @@ void SystemStats::updateMemory() {
         else if (key == QLatin1String("MemAvailable")) available_kB = val;
     }
 
-    totalMB = total_kB     / 1024;
-    usedMB  = (total_kB - available_kB) / 1024;
+    totalMB = total_kB     / kKiBPerMiB;
+    usedMB  = (total_kB - available_kB) / kKiBPerMiB;
 
 #elif defined(Q_OS_WIN)
     MEMORYSTATUSEX ms{};
     ms.dwLength = sizeof(ms);
     if (GlobalMemoryStatusEx(&ms)) {
-        totalMB = static_cast<qint64>(ms.ullTotalPhys)    / (1024 * 1024);
+        totalMB = static_cast<qint64>(ms.ullTotalPhys)    / kBytesPerMiB;
         usedMB  = static_cast<qint64>(ms.ullTotalPhys
-                                    - ms.ullAvailPhys)    / (1024 * 1024);
+                                    - ms.ullAvailPhys)    / kBytesPerMiB;
     }
 #else
-    totalMB = 8192;
-    usedMB  = 4096;
+    totalMB = kStubTotalMb;
+    usedMB  = kStubUsedMb;
 #endif
 
     const int pct = (totalMB > 0)
-        ? static_cast<int>(usedMB * 100 / totalMB)
+        ? static_cast<int>(usedMB * kPercentScale / totalMB)
         : 0;
 
     // Emit only on actual change — avoid spurious QML updates
@@ -105,7 +116,7 @@ void SystemStats::updateCpu() {
     m_prevIdle  = totalIdle;
 
     if (dTotal > 0)
-        pct = static_cast<int>((dTotal - dIdle) * 100 / dTotal);
+        pct = static_cast<int>((dTotal - dIdle) * kPercentScale / dTotal);
 
 #elif defined(Q_OS_WIN)
     static FILETIME sPrevIdle{}, sPrevKernel{}, sPrevUser{};
@@ -122,10 +133,10 @@ void SystemStats::updateCpu() {
 
     const ULONGLONG total = dKernel + dUser;
     if (total > 0)
-        pct = static_cast<int>((total - dIdle) * 100 / total);
+        pct = static_cast<int>((total - dIdle) * kPercentScale / total);
 #endif
 
-    pct = qBound(0, pct, 100);
+    pct = qBound(0, pct, kPercentScale);
     if (m_cpuPercent != pct) { m_cpuPercent = pct; emit cpuPercentChanged(); }
 }
 
@@ -140,9 +151,9 @@ void SystemStats::updateUptime() {
                          .split(QLatin1Char(' '))
                          .first()
                          .toDouble();
-    const int h = static_cast<int>(secs) / 3600;
-    const int m = (static_cast<int>(secs) % 3600) / 60;
-    const int s = static_cast<int>(secs) % 60;
+    const int h = static_cast<int>(secs) / kSecondsPerHour;
+    const int m = (static_cast<int>(secs) % kSecondsPerHour) / kSecondsPerMinute;
+    const int s = static_cast<int>(secs) % kSecondsPerMinute;
     str = QString::asprintf("%dh %02dm %02ds", h, m, s);
 #else
     str = QStringLiteral("n/a");

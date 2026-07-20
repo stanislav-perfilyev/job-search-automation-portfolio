@@ -3,9 +3,13 @@
 #include <QTimer>
 #include <QString>
 
-// SystemStats exposes CPU load, memory usage and uptime to QML via Q_PROPERTY.
-// Backend refreshes every second via QTimer, emitting change signals.
-
+/**
+ * @class SystemStats
+ * @brief Exposes CPU load, memory usage and uptime to QML via Q_PROPERTY.
+ *
+ * Backend refreshes every kRefreshIntervalMs via QTimer, emitting change
+ * signals only when a value actually changes (avoids spurious QML updates).
+ */
 class SystemStats : public QObject {
     Q_OBJECT
 
@@ -18,11 +22,11 @@ class SystemStats : public QObject {
 public:
     explicit SystemStats(QObject* parent = nullptr);
 
-    int     cpuPercent()  const { return m_cpuPercent;  }
-    int     memPercent()  const { return m_memPercent;  }
-    qint64  memUsedMB()   const { return m_memUsedMB;   }
-    qint64  memTotalMB()  const { return m_memTotalMB;  }
-    QString uptimeStr()   const { return m_uptimeStr;   }
+    [[nodiscard]] int     cpuPercent()  const { return m_cpuPercent;  }
+    [[nodiscard]] int     memPercent()  const { return m_memPercent;  }
+    [[nodiscard]] qint64  memUsedMB()   const { return m_memUsedMB;   }
+    [[nodiscard]] qint64  memTotalMB()  const { return m_memTotalMB;  }
+    [[nodiscard]] QString uptimeStr()   const { return m_uptimeStr;   }
 
 signals:
     void cpuPercentChanged();

@@ -35,6 +35,12 @@ main.cpp
                     └── GaugeItem { value: systemStats.memPercent }
 ```
 
+## Usage
+
+Launch the built binary — the window opens showing two animated gauges
+(CPU, RAM) and the uptime string, all refreshing once per second with no
+further interaction required.
+
 ## Build
 
 ```bash
@@ -45,6 +51,12 @@ cmake --build .
 ```
 
 Requires: Qt 6.2+, CMake 3.21+
+
+## Tests
+
+```bash
+ctest --test-dir build --output-on-failure
+```
 
 ## Key design decisions
 
