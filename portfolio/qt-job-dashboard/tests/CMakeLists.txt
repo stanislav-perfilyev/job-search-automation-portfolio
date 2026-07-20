@@ -8,6 +8,7 @@ set(SHARED_SRCS
 # ── Test 1: VacancyModel (uses seeded SQLite via named connection) ──
 add_executable(test_vacancy_model
     test_vacancy_model.cpp
+    ../src/models/ivacancymodel.h
     ../src/models/vacancysqlmodel.cpp
     ../src/models/vacancyfiltermodel.cpp
     ${SHARED_SRCS}
