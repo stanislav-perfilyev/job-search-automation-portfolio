@@ -36,6 +36,18 @@ Session Bus
               └── Signal: StatsUpdated(String)
 ```
 
+## Architecture
+
+`service/` hosts `SystemInfoService` (QObject + QDBusContext), registered on the
+session bus and exporting its public slots as D-Bus methods. `client/` is a
+thin `QDBusInterface` proxy that calls those methods and prints the results.
+`tests/` exercises the service's logic directly (no live D-Bus bus needed).
+
+## Usage
+
+Start the service in one terminal, then run the client (or `dbus-send`) in
+another — see [Build and run](#build-and-run-linux) below for exact commands.
+
 ## Build and run (Linux)
 
 ```bash

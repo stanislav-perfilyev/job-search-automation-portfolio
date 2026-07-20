@@ -9,7 +9,7 @@ static const char OBJECT_PATH[]  = "/ru/perfilyev/SystemInfo";
 int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
 
-    auto& bus = QDBusConnection::sessionBus();
+    auto bus = QDBusConnection::sessionBus();
     if (!bus.isConnected()) {
         qCritical() << "Cannot connect to D-Bus session bus.";
         return 1;

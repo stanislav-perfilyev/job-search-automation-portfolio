@@ -10,10 +10,18 @@
 #  include <sys/sysinfo.h>
 #endif
 
+namespace {
+constexpr int  kStatsIntervalMs   = 5000;  ///< StatsUpdated() emission period
+constexpr int  kHostnameBufSize   = 256;   ///< gethostname() buffer size
+constexpr qint64 kBytesPerMebibyte = 1024 * 1024;
+}  // namespace
+
 SystemInfoService::SystemInfoService(QObject* parent)
     : QObject(parent)
 {
-    auto* timer = new QTimer(this);
+    // Qt-parented: timer is owned by `this` and destroyed automatically
+    // when the service is destroyed — no manual cleanup needed.
+    auto* timer = new QTimer(this);  // NOLINT(cppcoreguidelines-owning-memory)
     connect(timer, &QTimer::timeout, this, [this]() {
         const auto mem = GetMemoryInfo();
         const QString info = QStringLiteral("used_mb=%1 total_mb=%2")
@@ -21,12 +29,12 @@ SystemInfoService::SystemInfoService(QObject* parent)
             .arg(mem.value(QStringLiteral("total_mb")).toInt());
         emit StatsUpdated(info);
     });
-    timer->start(5000);
+    timer->start(kStatsIntervalMs);
 }
 
 QString SystemInfoService::GetHostname() const {
 #ifdef Q_OS_LINUX
-    char buf[256] = {};
+    char buf[kHostnameBufSize] = {};
     if (gethostname(buf, sizeof(buf)) == 0)
         return QString::fromUtf8(buf);
 #endif
@@ -40,17 +48,20 @@ QVariantMap SystemInfoService::GetMemoryInfo() const {
     struct sysinfo si{};
     if (sysinfo(&si) == 0) {
         const qint64 total_mb = static_cast<qint64>(si.totalram)
-                                * si.mem_unit / (1024 * 1024);
+                                * si.mem_unit / kBytesPerMebibyte;
         const qint64 free_mb  = static_cast<qint64>(si.freeram)
-                                * si.mem_unit / (1024 * 1024);
+                                * si.mem_unit / kBytesPerMebibyte;
         info[QStringLiteral("total_mb")] = total_mb;
         info[QStringLiteral("free_mb")]  = free_mb;
         info[QStringLiteral("used_mb")]  = total_mb - free_mb;
     }
 #else
-    info[QStringLiteral("total_mb")] = 8192;
-    info[QStringLiteral("free_mb")]  = 4096;
-    info[QStringLiteral("used_mb")]  = 4096;
+    // Non-Linux fallback: sysinfo() unavailable, report plausible stub values.
+    constexpr int kStubTotalMb = 8192;
+    constexpr int kStubUsedMb  = 4096;
+    info[QStringLiteral("total_mb")] = kStubTotalMb;
+    info[QStringLiteral("free_mb")]  = kStubTotalMb - kStubUsedMb;
+    info[QStringLiteral("used_mb")]  = kStubUsedMb;
 #endif
 
     return info;
