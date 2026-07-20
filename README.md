@@ -51,7 +51,7 @@ job-search-automation-portfolio/
 | **[WinAPI Showcase](portfolio/winapi_showcase/)** | C++17, WinAPI | ProcessMonitor, FileWatcher, Named Pipe IPC; RAII handles, 9 GoogleTest tests |
 | **[QML System Monitor](portfolio/qml_system_monitor/)** | Qt6, QML, C++ backend | Live CPU/RAM/disk charts, abstract `ISystemStats`, `[[nodiscard]]`, 7 tests |
 | **[D-Bus Service](portfolio/dbus_service/)** | C++17, Qt D-Bus | `SystemInfoService`, typed error signals, client + server, 5 tests |
-| **[DAQ Bug Fix](portfolio/daq-bugfix/)** | C++, multithreading | Fixed race condition in a production DAQ data collection system |
+| **[DAQ Bug Fix](https://github.com/stanislav-perfilyev/cpp-code-review)** | C++, multithreading | Fixed race condition in a production DAQ data collection system |
 | **[MIL-STD-1553 Analyzer](portfolio/mil1553_analyzer/)** | Pascal/Delphi | Protocol decoder + simulator for military avionic bus |
 
 ---
