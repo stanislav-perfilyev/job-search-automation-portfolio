@@ -44,7 +44,6 @@ void SystemStats::updateMemory() {
     QTextStream ts(&f);
     static const QRegularExpression re(QStringLiteral("^(\\w+):\\s+(\\d+)"));
 
-    qint64 free_kB      = 0;
     qint64 available_kB = 0;
     qint64 total_kB     = 0;
 
@@ -56,7 +55,6 @@ void SystemStats::updateMemory() {
         const qint64  val = m.captured(2).toLongLong();
 
         if      (key == QLatin1String("MemTotal"))     total_kB     = val;
-        else if (key == QLatin1String("MemFree"))      free_kB      = val;
         else if (key == QLatin1String("MemAvailable")) available_kB = val;
     }
 
@@ -148,7 +146,7 @@ void SystemStats::updateUptime() {
     if (!f.open(QIODevice::ReadOnly)) return;
 
     const double secs = f.readLine()
-                         .split(QLatin1Char(' '))
+                         .split(' ')
                          .first()
                          .toDouble();
     const int h = static_cast<int>(secs) / kSecondsPerHour;
