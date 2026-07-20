@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - 'portfolio/qml_system_monitor/**'
+  workflow_dispatch: {}
 
 jobs:
   build:
