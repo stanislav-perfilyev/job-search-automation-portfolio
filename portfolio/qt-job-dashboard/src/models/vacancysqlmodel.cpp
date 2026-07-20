@@ -69,7 +69,7 @@ bool VacancySqlModel::refresh()
 
     QSqlQuery q(conn);
     q.prepare(
-        "SELECT id, date::text, title, company, source, status, "
+        "SELECT id, CAST(date AS TEXT), title, company, source, status, "
         "       salary_min, salary_max, currency, template_used, url, notes "
         "FROM vacancies "
         "ORDER BY date DESC, company ASC"

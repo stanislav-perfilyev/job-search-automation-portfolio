@@ -39,7 +39,7 @@ bool CsvExporter::exportModel(QAbstractItemModel* model,
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
-    out << "\xEF\xBB\xBF";   // UTF-8 BOM
+    out.setGenerateByteOrderMark(true);   // writes UTF-8 BOM (EF BB BF) before any data
 
     const int cols = model->columnCount();
     const int rows = model->rowCount();
