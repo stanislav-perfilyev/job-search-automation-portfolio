@@ -6,6 +6,7 @@ test_monitors.py -- тесты для telegram_monitor.py, negotiations_monitor_
 """
 
 import sys
+import socket
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 import importlib.util
@@ -262,6 +263,58 @@ class TestIsUpworkSender(unittest.TestCase):
 
     def test_case_insensitive(self):
         self.assertTrue(upmon.is_upwork_sender("NOREPLY@UPWORK.COM"))
+
+
+class TestCheckEmailsRetry(unittest.TestCase):
+    """Retry-логика check_emails() при транзиентных сетевых сбоях IMAP."""
+
+    def test_succeeds_on_first_try(self):
+        with patch.object(upmon, "_check_emails_once", return_value=[{"label": "ok"}]) as m, \
+             patch("time.sleep") as sleep_mock:
+            result = upmon.check_emails()
+        self.assertEqual(result, [{"label": "ok"}])
+        self.assertEqual(m.call_count, 1)
+        sleep_mock.assert_not_called()
+
+    def test_recovers_after_transient_timeout(self):
+        # Первая попытка падает с socket.timeout ("The read operation timed out"),
+        # вторая -- успешна. Итоговый результат должен вернуться без исключения.
+        side_effects = [socket.timeout("The read operation timed out"), [{"label": "ok"}]]
+        with patch.object(upmon, "_check_emails_once", side_effect=side_effects) as m, \
+             patch("time.sleep") as sleep_mock:
+            result = upmon.check_emails()
+        self.assertEqual(result, [{"label": "ok"}])
+        self.assertEqual(m.call_count, 2)
+        sleep_mock.assert_called_once()
+
+    def test_raises_after_exhausting_retries(self):
+        import imaplib as _imaplib
+        with patch.object(
+            upmon, "_check_emails_once",
+            side_effect=socket.timeout("The read operation timed out"),
+        ) as m, patch("time.sleep") as sleep_mock:
+            with self.assertRaises(socket.timeout):
+                upmon.check_emails()
+        self.assertEqual(m.call_count, upmon.IMAP_MAX_RETRIES)
+        self.assertEqual(sleep_mock.call_count, upmon.IMAP_MAX_RETRIES - 1)
+
+    def test_retries_on_imap_abort(self):
+        import imaplib as _imaplib
+        side_effects = [_imaplib.IMAP4.abort("connection dropped"), [{"label": "ok"}]]
+        with patch.object(upmon, "_check_emails_once", side_effect=side_effects), \
+             patch("time.sleep"):
+            result = upmon.check_emails()
+        self.assertEqual(result, [{"label": "ok"}])
+
+    def test_non_network_exception_not_retried(self):
+        # Ошибки, не связанные с сетью (например, программная ошибка), не должны
+        # маскироваться retry-циклом -- OSError/IMAP4.abort это единственные
+        # перехватываемые типы, остальное должно пробрасываться как есть.
+        with patch.object(upmon, "_check_emails_once", side_effect=ValueError("boom")), \
+             patch("time.sleep") as sleep_mock:
+            with self.assertRaises(ValueError):
+                upmon.check_emails()
+        sleep_mock.assert_not_called()
 
 
 class TestFormatUpworkMessage(unittest.TestCase):

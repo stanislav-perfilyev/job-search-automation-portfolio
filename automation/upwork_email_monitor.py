@@ -22,6 +22,7 @@ import email
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone, timedelta
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
@@ -77,6 +78,10 @@ EVENTS = [
 
 # Минимальный приоритет для отправки (1=только критичное, 3=всё)
 MIN_PRIORITY = 3
+
+# Retry при сетевых сбоях IMAP (таймауты Gmail на GitHub Actions runners бывают транзиентными)
+IMAP_MAX_RETRIES = 3
+IMAP_RETRY_DELAY_SEC = 5
 
 
 # ── Утилиты ───────────────────────────────────────────────────────────────────
@@ -141,7 +146,28 @@ def parse_email_date(msg) -> datetime | None:
 # ── Основная логика ────────────────────────────────────────────────────────────
 
 def check_emails() -> list[dict]:
-    """Подключается к Gmail, возвращает список событий за LOOKBACK_MINUTES."""
+    """Подключается к Gmail с retry при сетевых сбоях, возвращает события за LOOKBACK_MINUTES.
+
+    GitHub Actions runners периодически ловят транзиентные таймауты при
+    установке TLS-соединения с imap.gmail.com ("The read operation timed out").
+    Одна неудачная попытка не должна приводить к алерту — сначала пробуем
+    переподключиться до IMAP_MAX_RETRIES раз с паузой между попытками.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, IMAP_MAX_RETRIES + 1):
+        try:
+            return _check_emails_once()
+        except (OSError, imaplib.IMAP4.abort) as e:
+            last_exc = e
+            print(f"   ⚠️ Попытка {attempt}/{IMAP_MAX_RETRIES} не удалась: {e}")
+            if attempt < IMAP_MAX_RETRIES:
+                time.sleep(IMAP_RETRY_DELAY_SEC)
+    assert last_exc is not None
+    raise last_exc
+
+
+def _check_emails_once() -> list[dict]:
+    """Одна попытка подключения к Gmail и разбора писем за LOOKBACK_MINUTES."""
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=LOOKBACK_MINUTES)
 
     # Формат даты для IMAP SINCE (без времени, день включительно)
