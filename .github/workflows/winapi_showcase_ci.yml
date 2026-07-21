@@ -31,13 +31,20 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: cppcheck
-        run: choco install cppcheck -y
+        run: choco install cppcheck -y --no-progress
 
       - name: Run cppcheck
         working-directory: portfolio/winapi_showcase
         shell: bash
         run: |
-          cppcheck \
+          # Chocolatey's cppcheck.exe is a shim (in C:\ProgramData\chocolatey\bin)
+          # that re-launches the real binary. cppcheck locates its std.cfg etc.
+          # relative to argv[0] at startup — through the shim that resolves to
+          # the shim's own directory instead of the real install dir, so it
+          # can't find "std.cfg" even though the file exists on disk. Calling
+          # the real installed exe directly sidesteps the shim entirely.
+          CPPCHECK="/c/Program Files/Cppcheck/cppcheck.exe"
+          "$CPPCHECK" \
             --enable=all \
             --std=c++17 \
             --suppress=missingInclude \

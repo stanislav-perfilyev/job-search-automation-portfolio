@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/dbus_client.dir/dbus_client_autogen/mocs_compilation.cpp.o CMakeFiles/dbus_client.dir/client/main.cpp.o -o dbus_client  /usr/lib/x86_64-linux-gnu/libQt6DBus.so.6.4.2 /usr/lib/x86_64-linux-gnu/libQt6Core.so.6.4.2 

@@ -1,0 +1,32 @@
+Start testing: Jul 21 18:45 +05
+----------------------------------------------------------
+1/1 Testing: DbusServiceTests
+1/1 Test: DbusServiceTests
+Command: "/mnt/d/claude/Projects/Устройство на работу/GitHub-repos/job-search-automation-public/portfolio/dbus_service/build_tmp/tests/test_dbus_service"
+Directory: /mnt/d/claude/Projects/Устройство на работу/GitHub-repos/job-search-automation-public/portfolio/dbus_service/build_tmp/tests
+"DbusServiceTests" start time: Jul 21 18:45 +05
+Output:
+----------------------------------------------------------
+********* Start testing of TestSystemInfoService *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : TestSystemInfoService::initTestCase()
+PASS   : TestSystemInfoService::test_echo_roundtrip()
+PASS   : TestSystemInfoService::test_hostname_notEmpty()
+PASS   : TestSystemInfoService::test_cpuCount_positive()
+PASS   : TestSystemInfoService::test_memoryInfo_hasRequiredKeys()
+PASS   : TestSystemInfoService::test_memoryInfo_valuesNonNegative()
+PASS   : TestSystemInfoService::test_memoryInfo_usedPlusFreeLeTotal()
+PASS   : TestSystemInfoService::test_uptime_notEmpty()
+PASS   : TestSystemInfoService::test_statsUpdated_signalEmitted()
+PASS   : TestSystemInfoService::cleanupTestCase()
+Totals: 10 passed, 0 failed, 0 skipped, 0 blacklisted, 4753ms
+********* Finished testing of TestSystemInfoService *********
+<end of output>
+Test time =   4.76 sec
+----------------------------------------------------------
+Test Passed.
+"DbusServiceTests" end time: Jul 21 18:45 +05
+"DbusServiceTests" time elapsed: 00:00:04
+----------------------------------------------------------
+
+End testing: Jul 21 18:45 +05
