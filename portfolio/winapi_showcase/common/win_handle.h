@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <tlhelp32.h>  // CreateToolhelp32Snapshot — used by create_snapshot() below
 #include <stdexcept>
 #include <string>
 

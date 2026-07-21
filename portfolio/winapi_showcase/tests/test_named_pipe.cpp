@@ -29,7 +29,10 @@ std::string BuildEchoReply(int clientId, const std::string& msg) {
 // Protocol constant tests
 // ─────────────────────────────────────────────────────────────────────────────
 TEST(PipeConstants, NameIsWellFormed) {
-    // Named pipe UNC path must start with \\.\pipe\
+    // Named pipe UNC path must start with the "\\.\pipe\" prefix.
+    // (Comment deliberately doesn't end with a bare backslash — a
+    // trailing '\' on a // comment line is a line-continuation in
+    // C++, which used to silently swallow the next source line.)
     std::wstring name(PIPE_NAME);
     ASSERT_FALSE(name.empty());
     EXPECT_EQ(name.substr(0, 9), L"\\\\.\\pipe\\");
