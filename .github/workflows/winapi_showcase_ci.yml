@@ -52,6 +52,7 @@ jobs:
             --suppress=unknownMacro \
             --suppress=unmatchedSuppression \
             --suppress=checkersReport \
+            --suppress=normalCheckLevelMaxBranches \
             --suppress=knownEmptyContainer:tests/test_process_monitor.cpp:54 \
             --suppress=unusedFunction:02_FileWatcher/file_watcher.cpp:202 \
             --suppress=unusedFunction:02_FileWatcher/file_watcher.cpp:125 \
