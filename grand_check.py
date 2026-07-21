@@ -49,6 +49,11 @@ def warn(msg):
 def ok(msg):
     global passed; passed += 1; print(f"{G}[ OK ]{NC} {msg}")
 
+def skip(msg):
+    # Не считается ни в FAIL, ни в WARN, ни в OK — "проверка неприменима
+    # здесь" (например, недостающая системная зависимость проверяется в CI).
+    print(f"{B}[SKIP]{NC} {msg}")
+
 def hdr(msg):
     print(f"\n{B}── {msg} {'─'*max(1,58-len(msg))}{NC}")
 
@@ -800,7 +805,16 @@ if args.asan:
         asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-g', '-Wno-unused-result']
         ok_flag, n_pass, n_fail, detail = _gtest_build_run(asan_flags, '/tmp/gc_asan')
         if ok_flag is None:
-            fail(f"ASAN: {detail[:600]}")
+            # "не найдены" покрывает оба случая: (1) libgtest_main.a/gtest.h
+            # отсутствуют, (2) test_*.cpp с GTest не найдены вовсе — например,
+            # проект использует QtTest (QTEST_MAIN), а не GoogleTest, тогда
+            # прямая g++-компиляция GTest-тестов не применима в принципе, это
+            # не поломка, а SKIP. Синхронизировано с основной копией в
+            # GitHub-repos/grand_check.py.
+            if "не найдены" in detail:
+                skip(f"ASAN: {detail}")
+            else:
+                fail(f"ASAN: {detail[:600]}")
         elif ok_flag:
             # Дополнительно проверяем что ASAN не выдал ошибки в stderr
             asan_hit = re.search(r'ERROR: (AddressSanitizer|LeakSanitizer)|runtime error:', detail)
@@ -836,6 +850,9 @@ if args.tsan:
             # TSAN не работает в WSL2 из-за memory mapping ограничений ядра
             if 'unexpected memory mapping' in detail or 'FATAL' in detail:
                 warn("TSAN: не поддерживается в WSL2 (memory mapping limitation)")
+            elif "не найдены" in detail:
+                # см. комментарий в БЛОК 11 — GTest неприменим (напр. QtTest)
+                skip(f"TSAN: {detail}")
             else:
                 fail(f"TSAN: {detail[:600]}")
         elif ok_flag:
@@ -879,11 +896,20 @@ if args.cppcheck:
                                    if not any(x in str(f) for x in exclude_dirs)})
             if not cppcheck_paths:
                 cppcheck_paths = [str(DIR)]
+            std_suppress = [
+                '--suppress=missingIncludeSystem', '--suppress=unmatchedSuppression',
+                '--suppress=missingInclude',
+            ]
+            # Qt-проекты: unknownMacro для Q_LOGGING_CATEGORY, slots и др.
+            # (cppcheck не знает Qt-макросы без --library=qt; синхронизировано
+            # с логикой основной копии grand_check.py в GitHub-repos/)
+            cmake_texts = ' '.join(t.read_text(errors='ignore') for t in cmake_files if t.exists())
+            if re.search(r'find_package\s*\(\s*Qt', cmake_texts):
+                std_suppress.append('--suppress=unknownMacro')
             rc2, out2, err2 = run(
                 ['cppcheck', '--enable=all', '--error-exitcode=1',
-                 '--suppress=missingIncludeSystem', '--suppress=unmatchedSuppression',
-                 '--suppress=missingInclude', '--inline-suppr',
-                 '--std=c++20'] + cppcheck_paths,
+                 '--inline-suppr',
+                 '--std=c++20'] + std_suppress + cppcheck_paths,
                 cwd=DIR, timeout=120
             )
             issues = [l for l in (out2 + err2).splitlines()
@@ -906,7 +932,8 @@ if args.cppcheck:
 if args.mypy:
     hdr("БЛОК 14: mypy (типы Python)")
     if not HAS_PY:
-        warn("mypy: Python файлов не найдено")
+        # C++/Qt-проект без Python-кода — mypy неприменим в принципе, не WARN.
+        skip("mypy: Python файлов не найдено")
     else:
         rc, out, err = run(['mypy', '--version'], timeout=5)
         if rc != 0:
@@ -930,7 +957,7 @@ if args.mypy:
 if args.bandit:
     hdr("БЛОК 15: bandit (безопасность Python)")
     if not HAS_PY:
-        warn("bandit: Python файлов не найдено")
+        skip("bandit: Python файлов не найдено")
     else:
         rc, out, err = run(['bandit', '--version'], timeout=5)
         if rc != 0:
@@ -989,7 +1016,11 @@ if args.coverage:
         cov_flags = ['--coverage', '-O0', '-g']
         ok_flag, n_pass, n_fail, detail = _gtest_build_run(cov_flags, '/tmp/gc_cov')
         if ok_flag is None:
-            warn(f"gcov: {detail}")
+            # см. комментарий в БЛОК 11 — GTest неприменим (напр. QtTest вместо GoogleTest)
+            if "не найдены" in detail:
+                skip(f"gcov: {detail}")
+            else:
+                warn(f"gcov: {detail}")
         elif not ok_flag:
             fail(f"gcov: {n_fail} тестов упали при сборке с --coverage")
         else:
