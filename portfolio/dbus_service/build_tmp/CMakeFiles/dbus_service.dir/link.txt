@@ -1,1 +1,0 @@
-/usr/bin/c++ -g CMakeFiles/dbus_service.dir/dbus_service_autogen/mocs_compilation.cpp.o CMakeFiles/dbus_service.dir/service/main.cpp.o CMakeFiles/dbus_service.dir/service/SystemInfoService.cpp.o -o dbus_service  /usr/lib/x86_64-linux-gnu/libQt6DBus.so.6.4.2 /usr/lib/x86_64-linux-gnu/libQt6Core.so.6.4.2 

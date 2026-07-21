@@ -25,4 +25,5 @@ htmlcov/
 Thumbs.db
 portfolio/*/build/
 portfolio/*/build-*/
+portfolio/*/build_tmp/
 portfolio/*/.cmake/
