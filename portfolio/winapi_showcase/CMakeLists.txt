@@ -12,6 +12,13 @@ if(NOT WIN32)
     return()
 endif()
 
+# windows.h's min/max macros collide with std::min/std::max (and with
+# ProcessMonitor.cpp's own std::min(topN, procs.size()) call, which fails
+# with a bizarre "illegal token on right side of '::'" under MSVC once the
+# macro mangles it). WIN32_LEAN_AND_MEAN also trims windows.h's default
+# winsock/GDI bloat, which nothing here needs.
+add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+
 add_subdirectory(01_ProcessMonitor)
 add_subdirectory(02_FileWatcher)
 add_subdirectory(03_NamedPipeIPC)
