@@ -16,7 +16,6 @@ public:
         int port{5432};
     };
     [[nodiscard]] DbConfig config() const;
-    void     setConfig(const DbConfig& cfg);
 
 private:
     QLineEdit* m_host;

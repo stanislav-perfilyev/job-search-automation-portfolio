@@ -71,12 +71,3 @@ SettingsDialog::DbConfig SettingsDialog::config() const
     return { m_host->text(), m_database->text(),
              m_user->text(), m_password->text(), m_port->value() };
 }
-
-void SettingsDialog::setConfig(const DbConfig& cfg)
-{
-    m_host->setText(cfg.host);
-    m_database->setText(cfg.database);
-    m_user->setText(cfg.user);
-    m_password->setText(cfg.password);
-    m_port->setValue(cfg.port);
-}
