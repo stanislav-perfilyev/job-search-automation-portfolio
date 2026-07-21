@@ -52,6 +52,9 @@ jobs:
             --suppress=unknownMacro \
             --suppress=unmatchedSuppression \
             --suppress=checkersReport \
+            --suppress=knownEmptyContainer:tests/test_process_monitor.cpp:52 \
+            --suppress=unusedFunction:02_FileWatcher/file_watcher.cpp:202 \
+            --suppress=unusedFunction:02_FileWatcher/file_watcher.cpp:125 \
             --error-exitcode=1 \
             --quiet \
             01_ProcessMonitor/ 02_FileWatcher/ 03_NamedPipeIPC/ common/ tests/

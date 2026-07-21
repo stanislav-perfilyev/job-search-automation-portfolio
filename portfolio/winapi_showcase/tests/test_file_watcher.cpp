@@ -25,17 +25,6 @@
 
 namespace {
 
-// Helper: create a file in a temp directory
-void touch(const std::wstring& path) {
-    std::wofstream f(path);
-    f << L"test";
-}
-
-// Helper: delete a file
-void erase(const std::wstring& path) {
-    DeleteFileW(path.c_str());
-}
-
 // ── ActionToString ────────────────────────────────────────────────────────────
 // Test the pure mapping function directly.
 

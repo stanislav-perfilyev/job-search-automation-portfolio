@@ -47,8 +47,10 @@ TEST(ProcessInfoSortTest, EmptyListSortDoesNotCrash) {
     std::vector<ProcessInfo> procs;
     // Deliberately sorting an empty container — this test exists specifically
     // to prove that edge case doesn't crash, so the container being empty
-    // here is intentional, not a bug.
-    // cppcheck-suppress knownEmptyContainer
+    // here is intentional, not a bug. (cppcheck's inline "// cppcheck-suppress"
+    // comment did not actually suppress this on the CI runner despite being
+    // placed correctly, so it's silenced via --suppress=...:file:line in
+    // winapi_showcase_ci.yml instead.)
     EXPECT_NO_THROW(std::sort(procs.begin(), procs.end()));
     EXPECT_TRUE(procs.empty());
 }
