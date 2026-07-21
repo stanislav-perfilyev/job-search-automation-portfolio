@@ -54,8 +54,13 @@ static std::unordered_map<DWORD, DWORD> buildThreadCountMap() {
 // Previously O(N²): 2 new snapshots per process.
 // Now: 2 snapshots total, then O(1) hash-map lookups per process.
 // ─────────────────────────────────────────────────────────────────────────────
+namespace {
+constexpr DWORD  kMaxTrackedProcesses = 2048;
+constexpr SIZE_T kBytesPerMB          = 1024 * 1024;
+} // namespace
+
 std::vector<ProcessInfo> WinProcessEnumerator::enumerate() const {
-    DWORD pids[2048];
+    DWORD pids[kMaxTrackedProcesses];
     DWORD cbNeeded = 0;
 
     if (!EnumProcesses(pids, sizeof(pids), &cbNeeded)) {
@@ -92,7 +97,7 @@ std::vector<ProcessInfo> WinProcessEnumerator::enumerate() const {
             PROCESS_MEMORY_COUNTERS pmc{};
             pmc.cb = sizeof(pmc);
             if (GetProcessMemoryInfo(*hProc, &pmc, sizeof(pmc)))
-                pi.workingSetMB = pmc.WorkingSetSize / (1024 * 1024);
+                pi.workingSetMB = pmc.WorkingSetSize / kBytesPerMB;
         }
 
         result.push_back(std::move(pi));

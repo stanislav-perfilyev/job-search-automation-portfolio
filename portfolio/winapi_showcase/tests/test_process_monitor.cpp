@@ -45,6 +45,10 @@ TEST(ProcessInfoSortTest, SortedDescendingByWorkingSet) {
 
 TEST(ProcessInfoSortTest, EmptyListSortDoesNotCrash) {
     std::vector<ProcessInfo> procs;
+    // Deliberately sorting an empty container — this test exists specifically
+    // to prove that edge case doesn't crash, so the container being empty
+    // here is intentional, not a bug.
+    // cppcheck-suppress knownEmptyContainer
     EXPECT_NO_THROW(std::sort(procs.begin(), procs.end()));
     EXPECT_TRUE(procs.empty());
 }

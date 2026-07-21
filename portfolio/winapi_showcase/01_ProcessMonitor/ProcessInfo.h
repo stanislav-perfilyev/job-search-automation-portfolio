@@ -6,6 +6,9 @@
 
 namespace process_monitor {
 
+/// Snapshot of one running process: identity, memory and thread footprint.
+/// Sorts descending by working-set size via operator< (see below), which is
+/// what powers the "top-N by memory" view in process_monitor.cpp.
 struct ProcessInfo {
     DWORD        pid         = 0;
     std::wstring name;
@@ -18,17 +21,19 @@ struct ProcessInfo {
     }
 };
 
-// Abstract interface — allows unit-testing without real WinAPI calls
+/// Abstract interface — allows unit-testing without real WinAPI calls.
+/// Production code uses WinProcessEnumerator; tests inject a stub that
+/// returns canned data with zero WinAPI dependency.
 class IProcessEnumerator {
 public:
     virtual ~IProcessEnumerator() = default;
-    virtual std::vector<ProcessInfo> enumerate() const = 0;
+    [[nodiscard]] virtual std::vector<ProcessInfo> enumerate() const = 0;
 };
 
-// Concrete WinAPI implementation
+/// Concrete WinAPI implementation: EnumProcesses + ToolHelp32 snapshots.
 class WinProcessEnumerator : public IProcessEnumerator {
 public:
-    std::vector<ProcessInfo> enumerate() const override;
+    [[nodiscard]] std::vector<ProcessInfo> enumerate() const override;
 
 
     // Implementation note: per-process helpers (getProcessName, getThreadCount,

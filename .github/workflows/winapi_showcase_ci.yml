@@ -1,0 +1,50 @@
+name: WinAPI Showcase CI
+
+on:
+  push:
+    paths:
+      - 'portfolio/winapi_showcase/**'
+  pull_request:
+    paths:
+      - 'portfolio/winapi_showcase/**'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build & Test (Windows / MSVC)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        working-directory: portfolio/winapi_showcase
+        run: cmake -B build -A x64
+
+      - name: Build
+        working-directory: portfolio/winapi_showcase
+        run: cmake --build build --config Release --parallel
+
+      - name: Run tests
+        working-directory: portfolio/winapi_showcase
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: cppcheck
+        run: choco install cppcheck -y
+
+      - name: Run cppcheck
+        working-directory: portfolio/winapi_showcase
+        shell: bash
+        run: |
+          cppcheck \
+            --enable=all \
+            --std=c++17 \
+            --suppress=missingInclude \
+            --suppress=missingIncludeSystem \
+            --suppress=unknownMacro \
+            --suppress=unmatchedSuppression \
+            --suppress=checkersReport \
+            --error-exitcode=1 \
+            --quiet \
+            01_ProcessMonitor/ 02_FileWatcher/ 03_NamedPipeIPC/ common/ tests/

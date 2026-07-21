@@ -28,9 +28,11 @@ target_link_libraries(test_process_monitor PRIVATE
     GTest::gtest
     psapi
 )
+target_compile_definitions(test_process_monitor PRIVATE UNICODE _UNICODE)
 if(MSVC)
-    target_compile_definitions(test_process_monitor PRIVATE UNICODE _UNICODE)
     target_compile_options(test_process_monitor PRIVATE /W4 /WX)
+else()
+    target_compile_options(test_process_monitor PRIVATE -Wall -Wextra -Werror)
 endif()
 add_test(NAME ProcessMonitorTests COMMAND test_process_monitor)
 
@@ -44,9 +46,11 @@ target_include_directories(test_file_watcher PRIVATE
     ../common
 )
 target_link_libraries(test_file_watcher PRIVATE GTest::gtest)
+target_compile_definitions(test_file_watcher PRIVATE UNICODE _UNICODE)
 if(MSVC)
-    target_compile_definitions(test_file_watcher PRIVATE UNICODE _UNICODE)
     target_compile_options(test_file_watcher PRIVATE /W4 /WX)
+else()
+    target_compile_options(test_file_watcher PRIVATE -Wall -Wextra -Werror)
 endif()
 add_test(NAME FileWatcherTests COMMAND test_file_watcher)
 
@@ -60,8 +64,10 @@ target_include_directories(test_named_pipe PRIVATE
     ../common
 )
 target_link_libraries(test_named_pipe PRIVATE GTest::gtest)
+target_compile_definitions(test_named_pipe PRIVATE UNICODE _UNICODE)
 if(MSVC)
-    target_compile_definitions(test_named_pipe PRIVATE UNICODE _UNICODE)
     target_compile_options(test_named_pipe PRIVATE /W4 /WX)
+else()
+    target_compile_options(test_named_pipe PRIVATE -Wall -Wextra -Werror)
 endif()
 add_test(NAME NamedPipeTests COMMAND test_named_pipe)

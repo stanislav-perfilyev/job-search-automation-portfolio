@@ -14,9 +14,12 @@
 #include <functional>
 #include <chrono>
 #include <stdexcept>
+#include <sstream>
 
 #pragma comment(lib, "kernel32.lib")
 
+/// One decoded FILE_NOTIFY_INFORMATION record from ReadDirectoryChangesW,
+/// plus a formatted local-time timestamp for display.
 struct FileEvent {
     DWORD       action;
     std::wstring filename;
@@ -85,8 +88,9 @@ public:
             winapi::Handle::Sentinel::Invalid);
 
         if (!hDir) {
-            std::wcerr << L"CreateFile failed (" << GetLastError() << L"): "
-                       << m_path << L"\n";
+            std::wostringstream oss;
+            oss << L"CreateFile failed (" << GetLastError() << L"): " << m_path << L"\n";
+            std::wcerr << oss.str();
             return false;
         }
 
@@ -96,7 +100,9 @@ public:
             winapi::Handle::Sentinel::Null);
 
         if (!hEvent) {
-            std::wcerr << L"CreateEvent failed: " << GetLastError() << L"\n";
+            std::wostringstream oss;
+            oss << L"CreateEvent failed: " << GetLastError() << L"\n";
+            std::wcerr << oss.str();
             return false;
         }
 
@@ -148,7 +154,9 @@ private:
                 const DWORD err = GetLastError();
                 // ERROR_OPERATION_ABORTED == Stop() was called while we waited
                 if (err != ERROR_OPERATION_ABORTED) {
-                    std::wcerr << L"ReadDirectoryChangesW error: " << err << L"\n";
+                    std::wostringstream oss;
+                    oss << L"ReadDirectoryChangesW error: " << err << L"\n";
+                    std::wcerr << oss.str();
                 }
                 break;
             }
@@ -195,7 +203,11 @@ int wmain(int argc, wchar_t* argv[]) {
     std::wstring watchPath = (argc > 1) ? argv[1] : L".";
 
     std::wcout << L"=== File System Watcher (WinAPI showcase) ===\n";
-    std::wcout << L"Watching: " << watchPath << L"\n";
+    {
+        std::wostringstream oss;
+        oss << L"Watching: " << watchPath << L"\n";
+        std::wcout << oss.str();
+    }
     std::wcout << L"Press Enter to stop.\n\n";
 
     DirectoryWatcher watcher(watchPath);
@@ -203,13 +215,17 @@ int wmain(int argc, wchar_t* argv[]) {
     std::mutex printMtx;
     bool started = watcher.Start([&](const FileEvent& ev) {
         std::lock_guard<std::mutex> lk(printMtx);
-        std::wcout << L"[" << ev.timestamp << L"] "
-                   << std::left << std::setw(14) << ActionToString(ev.action)
-                   << L" " << ev.filename << L"\n";
+        std::wostringstream oss;
+        oss << L"[" << ev.timestamp << L"] "
+            << std::left << std::setw(14) << ActionToString(ev.action)
+            << L" " << ev.filename << L"\n";
+        std::wcout << oss.str();
     });
 
     if (!started) {
-        std::wcerr << L"Failed to start watcher for: " << watchPath << L"\n";
+        std::wostringstream oss;
+        oss << L"Failed to start watcher for: " << watchPath << L"\n";
+        std::wcerr << oss.str();
         return 1;
     }
 

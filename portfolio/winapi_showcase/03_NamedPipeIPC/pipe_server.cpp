@@ -23,7 +23,8 @@ std::mutex        g_printMtx;
 
 void Log(const std::wstring& msg) {
     std::lock_guard<std::mutex> lk(g_printMtx);
-    std::wcout << msg << L"\n";
+    const std::wstring line = msg + L"\n";
+    std::wcout << line;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,7 +70,7 @@ void HandleClient(HANDLE rawPipe, int clientId) {
 // ─────────────────────────────────────────────────────────────────────────────
 int main() {
     std::wcout << L"=== Named Pipe Server (WinAPI IPC Showcase) ===\n";
-    std::wcout << L"Pipe: " << PIPE_NAME << L"\n";
+    Log(std::wstring(L"Pipe: ") + PIPE_NAME);
     std::wcout << L"Waiting for clients... (Ctrl+C to stop)\n\n";
 
     int nextId = 1;
@@ -88,7 +89,9 @@ int main() {
             winapi::Handle::Sentinel::Invalid);
 
         if (!hPipe) {
-            std::wcerr << L"CreateNamedPipe failed: " << GetLastError() << L"\n";
+            std::wostringstream oss;
+            oss << L"CreateNamedPipe failed: " << GetLastError() << L"\n";
+            std::wcerr << oss.str();
             break;
         }
 

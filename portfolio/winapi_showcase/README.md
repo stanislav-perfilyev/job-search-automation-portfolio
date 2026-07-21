@@ -27,17 +27,45 @@ These three subsystems appear repeatedly in DLP agent architecture (e.g., Endpoi
 
 ## Build (Windows, MSVC / Visual Studio 2022)
 
+The repo root now has a single top-level `CMakeLists.txt` that builds all
+three subprojects and the test suite in one pass (it `return()`s early on
+non-Windows configures, since every target links against real Win32 APIs):
+
 ```bash
-# Build all three projects
-cd 01_ProcessMonitor && mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" && cmake --build . --config Release
-
-cd ../../02_FileWatcher && mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" && cmake --build . --config Release
-
-cd ../../03_NamedPipeIPC && mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" && cmake --build . --config Release
+mkdir build && cd build
+cmake .. -G "Visual Studio 17 2022"
+cmake --build . --config Release
+ctest -C Release --output-on-failure
 ```
+
+Each subproject also still builds standalone (`cd 01_ProcessMonitor && cmake -B build ...`) if you only want one binary.
+
+## Usage
+
+```bash
+# Process Monitor — live top-20 by working set, refreshes on Enter
+01_ProcessMonitor\process_monitor.exe
+
+# File Watcher — watches a directory (default: current dir) for changes
+02_FileWatcher\file_watcher.exe C:\path\to\watch
+
+# Named Pipe IPC — run the server, then one or more clients in separate terminals
+03_NamedPipeIPC\pipe_server.exe
+03_NamedPipeIPC\pipe_client.exe
+```
+
+## Architecture
+
+Each subproject follows the same shape: a small WinAPI-facing class (or free
+functions) that owns OS handles via the shared `winapi::Handle` RAII wrapper
+in `common/`, a background `std::thread` for the blocking/polling WinAPI
+call, and a thin `main()`/`wmain()` that wires the class to console I/O.
+Console output from background threads is always assembled into a single
+`std::wstring` (via `std::wostringstream` or a mutex-guarded `Log()` helper)
+before one final `<<` to `wcout`/`wcerr`, so output from concurrent threads
+never interleaves mid-line. `01_ProcessMonitor`'s core logic is split behind
+`IProcessEnumerator` specifically so `tests/` can exercise it with a stub
+enumerator, with zero real WinAPI calls in the test binary.
 
 ## Project structure
 

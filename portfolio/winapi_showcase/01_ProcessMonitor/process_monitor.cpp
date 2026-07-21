@@ -6,8 +6,13 @@
 #include <atomic>
 #include <mutex>
 #include <chrono>
+#include <sstream>
 
 using namespace process_monitor;
+
+namespace {
+constexpr int kProcessNameColumnWidth = 38;
+} // namespace
 
 // Monitor: periodically refreshes snapshot in background thread
 class ProcessMonitor {
@@ -44,7 +49,9 @@ private:
                 std::lock_guard<std::mutex> lk(m_mutex);
                 m_snapshot = std::move(data);
             } catch (const std::exception& e) {
-                std::wcerr << L"Monitor error: " << e.what() << L"\n";
+                std::wostringstream oss;
+                oss << L"Monitor error: " << e.what() << L"\n";
+                std::wcerr << oss.str();
             }
             std::this_thread::sleep_for(m_interval);
         }
@@ -59,26 +66,33 @@ private:
 };
 
 static void printSnapshot(const std::vector<ProcessInfo>& procs, size_t topN = 20) {
-    std::wcout << L"\n" << std::wstring(72, L'-') << L"\n";
-    std::wcout << std::left
-               << std::setw(8)  << L"PID"
-               << std::setw(38) << L"Process"
-               << std::setw(14) << L"WorkSet (MB)"
-               << std::setw(8)  << L"Threads"
-               << L"\n"
-               << std::wstring(72, L'-') << L"\n";
+    std::wostringstream header;
+    header << L"\n" << std::wstring(72, L'-') << L"\n"
+           << std::left
+           << std::setw(8)  << L"PID"
+           << std::setw(kProcessNameColumnWidth) << L"Process"
+           << std::setw(14) << L"WorkSet (MB)"
+           << std::setw(8)  << L"Threads"
+           << L"\n"
+           << std::wstring(72, L'-') << L"\n";
+    std::wcout << header.str();
 
     const size_t shown = std::min(topN, procs.size());
     for (size_t i = 0; i < shown; ++i) {
         const auto& p = procs[i];
-        std::wcout << std::left
-                   << std::setw(8)  << p.pid
-                   << std::setw(38) << p.name.substr(0, 37)
-                   << std::setw(14) << p.workingSetMB
-                   << std::setw(8)  << p.threadCount
-                   << L"\n";
+        std::wostringstream row;
+        row << std::left
+            << std::setw(8)  << p.pid
+            << std::setw(kProcessNameColumnWidth) << p.name.substr(0, kProcessNameColumnWidth - 1)
+            << std::setw(14) << p.workingSetMB
+            << std::setw(8)  << p.threadCount
+            << L"\n";
+        std::wcout << row.str();
     }
-    std::wcout << L"\nTotal: " << procs.size() << L" processes\n";
+
+    std::wostringstream footer;
+    footer << L"\nTotal: " << procs.size() << L" processes\n";
+    std::wcout << footer.str();
 }
 
 int main() {
