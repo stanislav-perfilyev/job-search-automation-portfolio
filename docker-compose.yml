@@ -37,31 +37,9 @@ services:
       start_period: 15s
       retries: 3
 
-  # ── APScheduler (morning_brief по расписанию) ─────────────────────────
-  scheduler:
-    build: .
-    command: python run_scheduler.py
-    environment:
-      - DATABASE_URL=postgresql://jobuser:jobpass@postgres:5432/jobsearch
-      - REDIS_URL=redis://redis:6379/0
-      - CLICKHOUSE_URL=clickhouse://analytics:analytics_pass@clickhouse:8123/analytics
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      - SCHEDULER_BRIEF_TIME=${SCHEDULER_BRIEF_TIME:-05:15}
-      - API_TOKEN=${API_TOKEN:-dev-token-change-me}
-    volumes:
-      - .:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+  # NOTE: separate scheduler service removed — APScheduler runs inside
+  # the api container (app/main.py lifespan). A standalone container would
+  # duplicate the morning brief. Manual run: python scripts/run_scheduler.py
 
   # ── PostgreSQL ────────────────────────────────────────────────────────
   postgres:
