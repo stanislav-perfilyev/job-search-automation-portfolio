@@ -9,7 +9,7 @@ All code follows senior engineering standards: custom exceptions, structured log
 
 ## Resume & Contact
 
-**[Download CV (PDF, English)](resume/Stanislav_Perfilyev_CV_EN.pdf)**
+**[Download CV (PDF, English)](resume/Stanislav_Perfilyev_CV_EN.pdf)** · [Русская версия (PDF)](resume/Stanislav_Perfilyev_CV_RU.pdf)
 
 Stanislav Perfilyev — Senior C++ Developer · Embedded Systems · Low-Latency · Qt/QML · Python Backend
 Almaty, Kazakhstan · stasperfiliyev@gmail.com · [Telegram](https://t.me/serenity14k40) · [GitHub](https://github.com/stanislav-perfilyev)
