@@ -193,7 +193,7 @@ def build_prompt(stats: dict, hh: list, habr: list) -> str:
     lines.append("  Зеркало Google Sheets:")
     lines.append("  • python sync_to_sheets.py       # обновить все листы из PG")
     lines.append("  • python sync_to_sheets.py --sheet Вакансии   # только вакансии")
-    lines.append("  • ТАБЛИЦЫ.bat уже запускает sync автоматически перед открытием Sheets")
+    lines.append("  • TABLES.bat уже запускает sync автоматически перед открытием Sheets")
 
     return "\n".join(lines)
 
