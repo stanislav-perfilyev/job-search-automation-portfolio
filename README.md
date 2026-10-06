@@ -3,8 +3,6 @@
 Production-grade job search automation system built with **Python 3.11 + C++17/Qt6**.  
 All code follows senior engineering standards: custom exceptions, structured logging, RAII, OOP interfaces, unit tests.
 
-**Live API:** [`https://web-production-f7596.up.railway.app`](https://web-production-f7596.up.railway.app)
-
 ---
 
 ## Resume & Contact
@@ -21,7 +19,7 @@ Almaty, Kazakhstan · stasperfiliyev@gmail.com · [Telegram](https://t.me/sereni
 ```
 job-search-automation-portfolio/
 ├── portfolio/          ← C++ portfolio projects (Qt6, WinAPI, QML, D-Bus, Pascal)
-├── app/                ← FastAPI REST + WebSocket backend (deployed on Railway)
+├── app/                ← FastAPI REST + WebSocket backend (Dockerized)
 ├── automation/         ← Python automation scripts (bots, parsers, AI cover letters)
 ├── db/                 ← Database layer (PostgreSQL, custom exceptions, migrations)
 ├── tests/              ← Test suite (pytest, 100+ tests)
@@ -40,7 +38,7 @@ job-search-automation-portfolio/
 ├──────────────────────────────────────────────────────────────────────┤
 │  app/   FastAPI REST + WebSocket                                      │
 │  /vacancies  /freelance  /stats  /health  /brief/run  /ws/updates    │
-│  Railway (prod) · PostgreSQL Neon · Redis cache · JWT auth           │
+│  Docker · PostgreSQL Neon · Redis cache · JWT auth                   │
 ├──────────────────────────────────────────────────────────────────────┤
 │  db/   Database layer                                                 │
 │  PostgreSQL (Neon) · Google Sheets mirror · custom exception tree    │
@@ -86,7 +84,7 @@ job-search-automation-portfolio/
 
 ## FastAPI Backend (`app/`)
 
-**Live:** `https://web-production-f7596.up.railway.app`
+**Run locally:** `docker compose up` → interactive API docs at `http://localhost:8000/docs`
 
 | Endpoint | Description |
 |---|---|
@@ -179,4 +177,4 @@ PYTHONPATH=. pytest tests/                         # run all tests
 
 **C++/Qt:** C++17 · Qt6 · QtCharts · QAbstractTableModel · CMake · CTest · GoogleTest · QTest
 
-**Infrastructure:** PostgreSQL (Neon) · Redis · Docker · Railway · GitHub Actions
+**Infrastructure:** PostgreSQL (Neon) · Redis · Docker · GitHub Actions
